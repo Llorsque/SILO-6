@@ -1,6 +1,105 @@
-/* headtohead.css
-   Scoped styles for module "headtohead".
-   IMPORTANT: Always prefix with .mod--headtohead to avoid affecting other modules.
-   Example:
-     .mod--headtohead .myClass { ... }
-*/
+/* Module-scoped layout: Head-to-Head */
+.mod--headtohead .h2hTop{display:flex; flex-direction:column; gap:10px}
+.mod--headtohead .h2hTop__row{display:flex; align-items:center; gap:10px}
+.mod--headtohead .h2hRiders{display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px}
+
+.mod--headtohead .input--sm{padding:8px 10px; border-radius:12px; max-width:90px}
+
+.mod--headtohead .h2hWrap{display:block}
+.mod--headtohead .h2hGrid{
+  display:grid;
+  grid-template-columns: 1fr minmax(260px, 360px) 1fr;
+  gap:12px;
+  align-items:stretch;
+}
+@media (max-width: 980px){
+  .mod--headtohead .h2hGrid{grid-template-columns: 1fr; }
+}
+
+.mod--headtohead .hcard{
+  border:1px solid var(--line);
+  background: rgba(255,255,255,.02);
+  border-radius:18px;
+  padding:14px;
+  min-height: 160px;
+}
+.mod--headtohead .h2{font-weight:1000; font-size:18px; letter-spacing:.01em; margin-bottom:4px}
+
+.mod--headtohead .hrow{display:flex; gap:8px; flex-wrap:wrap}
+.mod--headtohead .pill{
+  border:1px solid var(--line);
+  background: rgba(255,255,255,.03);
+  padding:8px 10px;
+  border-radius:999px;
+  font-weight:900;
+  white-space:nowrap;
+}
+.mod--headtohead .pill--wide{padding:10px 12px}
+
+.mod--headtohead .hmid{
+  border:1px solid rgba(82,232,232,.25);
+  background: rgba(82,232,232,.06);
+  border-radius:18px;
+  padding:14px;
+}
+.mod--headtohead .hmid__title{font-weight:1000; letter-spacing:.02em; margin-bottom:10px}
+.mod--headtohead .hmid__row{display:flex; flex-direction:column; gap:10px}
+
+@media (min-width: 981px){
+  .mod--headtohead .hmid__row{gap:10px}
+}
+
+.mod--headtohead .cardsGrid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap:10px;
+}
+
+.mod--headtohead .matrixWrap{
+  border:1px solid var(--line);
+  background: rgba(255,255,255,.02);
+  border-radius:18px;
+  padding:14px;
+  overflow:auto;
+}
+.mod--headtohead table.matrix{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  margin-top:10px;
+}
+.mod--headtohead table.matrix th,
+.mod--headtohead table.matrix td{
+  border-bottom:1px solid rgba(255,255,255,.08);
+  padding:10px 10px;
+  text-align:center;
+  font-size:13px;
+}
+.mod--headtohead table.matrix th{
+  text-align:left;
+  font-weight:1000;
+  color: var(--muted);
+}
+.mod--headtohead td.matrix__self{color:var(--muted)}
+
+.mod--headtohead .msel{position:relative; display:inline-block; margin-top:10px}
+.mod--headtohead .msel__btn{border-radius:12px}
+.mod--headtohead .msel__panel{
+  position:absolute;
+  top:44px;
+  left:0;
+  width:260px;
+  max-height:320px;
+  overflow:auto;
+  border:1px solid var(--line);
+  background: rgba(10,14,24,.98);
+  border-radius:14px;
+  padding:10px;
+  display:none;
+  z-index:40;
+}
+.mod--headtohead .msel__panel--open{display:block}
+.mod--headtohead .msel__head{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px}
+.mod--headtohead .msel__list{display:flex; flex-direction:column; gap:6px}
+.mod--headtohead .msel__row{display:flex; align-items:center; gap:10px; cursor:pointer}
+.mod--headtohead .msel__row input{transform: translateY(1px)}

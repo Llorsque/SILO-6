@@ -1,6 +1,147 @@
-/* finalpresentation.css
-   Scoped styles for module "finalpresentation".
-   IMPORTANT: Always prefix with .mod--finalpresentation to avoid affecting other modules.
-   Example:
-     .mod--finalpresentation .myClass { ... }
-*/
+/* Scoped to module via module CSS loader. Keep selectors module-specific. */
+
+.fpHeader{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  margin-bottom:14px;
+}
+.fpHeader__title{
+  font-size:22px;
+  font-weight:1000;
+  letter-spacing:.2px;
+}
+
+.fpPicksGrid{
+  display:grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap:10px;
+  margin-bottom:14px;
+}
+
+.fpPick{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.fpPick__label{
+  font-size:12px;
+  font-weight:900;
+  color: var(--muted);
+}
+.fpPick__input{
+  width:100%;
+  height:38px;
+  border-radius:12px;
+  border:1px solid var(--line);
+  background: rgba(255,255,255,.04);
+  color: var(--text);
+  padding: 0 12px;
+  font-weight:800;
+  outline:none;
+}
+.fpPick__input:focus{
+  border-color: rgba(82,232,232,.9);
+  box-shadow: 0 0 0 3px rgba(82,232,232,.18);
+}
+
+.fpNav{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  margin: 6px 0 14px;
+}
+.fpNav__btn{
+  width:42px;
+  height:42px;
+  border-radius:999px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:1000;
+}
+.fpNav__text{
+  font-weight:1000;
+  letter-spacing:.2px;
+}
+
+.fpCardsRow{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:14px;
+}
+
+.fpCard{
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:14px;
+  background: rgba(255,255,255,.03);
+}
+.fpCard__top{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  margin-bottom:10px;
+}
+
+.fpPos{
+  width:38px;
+  height:38px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:1000;
+}
+
+.fpCard__info{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.fpName{
+  font-size:18px;
+  font-weight:1000;
+  line-height:1.1;
+}
+.fpMeta{
+  font-size:13px;
+  font-weight:800;
+  color: var(--muted);
+}
+
+.fpTitles{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-bottom:10px;
+}
+.fpTitleChip{
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:6px 10px;
+  font-size:12px;
+  font-weight:1000;
+  background: rgba(255,255,255,.03);
+}
+
+.fpLines{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.fpLine{
+  font-size:13px;
+  font-weight:850;
+  color: var(--text);
+}
+.fpLine--muted{
+  color: var(--muted);
+}
+
+@media (max-width: 900px){
+  .fpPicksGrid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .fpCardsRow{ grid-template-columns: 1fr; }
+}

@@ -1,4 +1,4 @@
-/* Scoped for A Final presentation only. Loaded via module_css.js. */
+/* Module-scoped styles for A Final presentation only */
 
 .fpSelectorsGrid{
   display:grid;
@@ -12,22 +12,18 @@
 
 .fpSelectorCell .dropdown{ width:100%; }
 
-/* Compact dropdown matches Biography/Champions styles */
-.dropdown--compact{ position:relative; }
-.input--compact{ height: 36px; }
+.fpCompareWrap{ display:flex; flex-direction:column; gap: 10px; }
 
-.fpCompareGrid{ display:flex; flex-direction:column; gap: 10px; }
-
-.fpWindowBar{
+.fpNavBar{
   display:flex;
   align-items:center;
   justify-content:center;
   gap: 12px;
 }
 
-.fpWindowLabel{
-  font-weight: 600;
-  opacity: 0.9;
+.fpNavLabel{
+  font-weight: 700;
+  opacity: 0.92;
 }
 
 .fpCardsGrid{
@@ -69,7 +65,7 @@
   justify-content:center;
   border: 1px solid rgba(255,255,255,0.15);
   background: rgba(0,0,0,0.25);
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .fpName{
@@ -108,3 +104,4 @@
 }
 
 .fpResultRow{ opacity: 0.95; }
+.fpResultRow--muted{ opacity: 0.7; }

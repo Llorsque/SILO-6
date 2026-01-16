@@ -3,11 +3,24 @@ import { sectionCard } from "../../core/layout.js";
 import { router } from "../../core/router.js";
 import { loadDataset, loadMeta } from "../../core/storage.js";
 
-function normalizeSpaces(s){ return String(s ?? "").replace(/\s+/g," ").trim(); }
+function normalizeSpaces(s){ return String(s ?? "").replace(/\s+/g, " ").trim(); }
 
-function typeableDropdown({ placeholder, value, options, onChange }){
-  const wrap = el("div", { class:"dropdown dropdown--compact" });
-  const input = el("input", { class:"input input--compact", placeholder, value: value || "" });
+function medalIcon(pos){
+  if(pos === 1) return "🥇";
+  if(pos === 2) return "🥈";
+  if(pos === 3) return "🥉";
+  return "";
+}
+
+function tourOrder(short){
+  // tie-breaker ONLY when position is equal
+  const map = { OS: 1, WK: 2, EK: 3, WC: 4, NK: 5 };
+  return map[short] ?? 99;
+}
+
+function typeableDropdown({placeholder, value, options, onChange}){
+  const wrap = el("div", { class:"dropdown" });
+  const input = el("input", { class:"input", placeholder, value: value || "" });
   const list = el("div", { class:"dropdown__list" });
 
   let open = false;
@@ -16,19 +29,20 @@ function typeableDropdown({ placeholder, value, options, onChange }){
     const q = (input.value || "").toLowerCase().trim();
     const filtered = options
       .filter(o => o.toLowerCase().includes(q))
-      .slice(0, 80);
+      .slice(0, 120);
 
     if(!filtered.length){
       list.appendChild(el("div", { class:"dropdown__item dropdown__item--muted" }, "Geen resultaten"));
       return;
     }
+
     for(const o of filtered){
       const it = el("div", { class:"dropdown__item" }, o);
-      it.addEventListener("mousedown", (e)=>{
-        e.preventDefault();
+      it.addEventListener("click", () => {
         input.value = o;
         onChange?.(o);
-        setOpen(false);
+        open = false;
+        list.classList.remove("dropdown__list--open");
       });
       list.appendChild(it);
     }
@@ -51,54 +65,42 @@ function typeableDropdown({ placeholder, value, options, onChange }){
 
   wrap.appendChild(input);
   wrap.appendChild(list);
-  return wrap;
+  return { wrap, input };
 }
 
-function medalIcon(pos){
-  if(pos === 1) return "🥇";
-  if(pos === 2) return "🥈";
-  if(pos === 3) return "🥉";
-  return "";
+function findSkaterRow(dataset, canonName){
+  const target = normalizeSpaces(canonName);
+  return (dataset?.skaters || []).find(r => normalizeSpaces(r.SKATERS ?? r["SKATERS"] ?? "") === target) || null;
 }
 
-function tourOrder(short){
-  // position is primary; this is tie-breaker
-  const map = { "OS": 1, "WK": 2, "EK": 3, "WC": 4, "NK": 5 };
-  return map[short] ?? 99;
+function findNat(dataset, canonName){
+  const row = findSkaterRow(dataset, canonName);
+  return normalizeSpaces(row?.NAT ?? row?.["NAT"] ?? row?.["Nat."] ?? "");
 }
 
-function findWTNameByNat(dataset, nat){
+function findWTTeamNameByNat(dataset, nat){
   const code = normalizeSpaces(nat).toUpperCase();
   if(!code) return "";
-  const row = (dataset.wtNames || []).find(r => String(r.NAT ?? r["NAT"] ?? "").toUpperCase() === code);
+  const row = (dataset?.wtNames || []).find(r => String(r.NAT ?? r["NAT"] ?? r["Nat."] ?? "").toUpperCase() === code);
   if(!row) return "";
-  return normalizeSpaces(row["WT NAME"] ?? row["WT NAME "] ?? row.WT_NAME ?? row["WT_NAME"] ?? "");
-}
-
-function findSkaterNat(dataset, name){
-  const canon = normalizeSpaces(name);
-  const row = (dataset.skaters || []).find(r => normalizeSpaces(r.SKATERS ?? r["SKATERS"] ?? "") === canon);
-  if(!row) return "";
-  return normalizeSpaces(row.NAT ?? row["NAT"] ?? row["Nat."] ?? "");
-}
-
-function findSkaterNote(dataset, name){
-  const canon = normalizeSpaces(name);
-  const row = (dataset.skaters || []).find(r => normalizeSpaces(r.SKATERS ?? r["SKATERS"] ?? "") === canon);
-  if(!row) return "";
-  return normalizeSpaces(row.OPMERKING ?? row["OPMERKING"] ?? row.Opmerking ?? row["Opmerking"] ?? row["Opmerking "] ?? row["H"] ?? "");
-}
-
-function parseBirthYear(dataset, name){
-  const canon = normalizeSpaces(name);
-  const row = (dataset.skaters || []).find(r => normalizeSpaces(r.SKATERS ?? r["SKATERS"] ?? "") === canon);
-  if(!row) return null;
-
-  // try common fields without assumptions
+  // user: WT Name in column C; header varies -> pick best match
+  // try common keys first
   const candidates = [
-    row.DOB, row["DOB"], row["Date of Birth"], row["Geboortedatum"], row["Birthdate"], row["Birth year"], row["BIRTH YEAR"],
-    row["BIRTHYEAR"], row["BirthYear"], row["YEAR"], row["Year"]
-  ].filter(v => v !== undefined && v !== null && String(v).trim() !== "");
+    row["WT NAME"], row["WT NAME "], row.WT_NAME, row["WT_NAME"], row["WT Name"], row["WT name"],
+    // if sheet has generic columns like A/B/C, also try C
+    row.C, row["C"], row["Team"], row["Team name"], row["Teamnaam"], row["TEAM"], row["TEAM NAME"]
+  ].filter(v => v != null && String(v).trim() !== "");
+
+  return candidates.length ? normalizeSpaces(candidates[0]) : "";
+}
+
+function parseBirthYearFromSkatersRow(skRow){
+  if(!skRow) return null;
+  const candidates = [
+    skRow.DOB, skRow["DOB"], skRow["Geboortedatum"], skRow["Birthdate"], skRow["Birth date"], skRow["Birthyear"], skRow["Birth year"],
+    skRow["BIRTH YEAR"], skRow["YEAR"], skRow["Year"], skRow["Geb. jaar"], skRow["Geboortejaar"],
+    // sometimes people store ISU url in column I, ignore
+  ].filter(v => v != null && String(v).trim() !== "");
 
   for(const v of candidates){
     const s = String(v).trim();
@@ -114,37 +116,52 @@ function ageFromBirthYear(by){
   return now.getFullYear() - by;
 }
 
-function computeTopResults(dataset, skaterName){
-  const rows = (dataset.results || []).filter(r => normalizeSpaces(r.name) === normalizeSpaces(skaterName));
-  // Eligible:
-  // - For OS/WK/EK/NK: FINAL A / FINAL only, pos 1..5
-  // - For WC: ONLY eindklassement/overall (runKey === "eindklassement" OR distance === "Eindklassement"), pos 1..5
+function isEligibleTournament(short){
+  return ["OS","WK","EK","WC","NK"].includes(short);
+}
+
+function isFinalRun(runKey){
+  const rk = String(runKey || "").toLowerCase();
+  return rk === "final a" || rk === "final";
+}
+
+function isOverallRun(runKey){
+  const rk = String(runKey || "").toLowerCase();
+  return rk === "eindklassement" || rk.includes("overall") || rk.includes("eind");
+}
+
+function computeTopResults(dataset, canonName){
+  const rows = (dataset?.results || []).filter(r => normalizeSpaces(r.skaterName) === normalizeSpaces(canonName));
+
   const elig = rows.filter(r => {
     const pos = r.pos;
     if(!(pos >= 1 && pos <= 5)) return false;
     const t = r.tournamentShort;
+    if(!isEligibleTournament(t)) return false;
+
     if(t === "WC"){
-      return r.runKey === "eindklassement" || r.distance === "Eindklassement";
+      // only overall / eindklassement for WC/WT
+      return isOverallRun(r.runKey) || normalizeSpaces(r.distance).toLowerCase() === "eindklassement";
     }
-    // OS/WK/EK/NK
-    return r.runKey === "final a" || r.runKey === "final";
+    // OS/WK/EK/NK: only FINAL A / FINAL
+    return isFinalRun(r.runKey);
   });
 
-  // Group by (pos, tournamentShort, distance) and merge seasons (years). Date differences ignored; location omitted.
-  const groups = new Map();
+  // Merge duplicates that only differ in date/location: group on pos + tournamentShort + distance
+  const map = new Map();
   for(const r of elig){
-    const key = `${r.pos}||${r.tournamentShort}||${r.distance}`;
-    const g = groups.get(key) || { pos: r.pos, tShort: r.tournamentShort, tournament: r.tournament, distance: r.distance, years: new Set() };
+    const key = `${r.pos}||${r.tournamentShort}||${normalizeSpaces(r.distance)}`;
+    const g = map.get(key) || { pos: r.pos, tShort: r.tournamentShort, distance: normalizeSpaces(r.distance), years: new Set() };
     if(r.season) g.years.add(r.season);
-    groups.set(key, g);
+    map.set(key, g);
   }
 
-  let list = Array.from(groups.values()).map(g => {
-    const years = Array.from(g.years).filter(Boolean).sort((a,b)=>b-a);
-    return { ...g, years };
-  });
+  let list = Array.from(map.values()).map(g => ({
+    ...g,
+    years: Array.from(g.years).filter(Boolean).sort((a,b)=>b-a)
+  }));
 
-  // Sort: position first, then tournament priority, then latest year desc
+  // Sort: position first, tie by tournament priority, then latest year desc
   list.sort((a,b)=>{
     if(a.pos !== b.pos) return a.pos - b.pos;
     const ao = tourOrder(a.tShort);
@@ -155,20 +172,22 @@ function computeTopResults(dataset, skaterName){
     return by - ay;
   });
 
-  // Limit 5 lines
   return list.slice(0, 5);
 }
 
-function computeTitles(dataset, skaterName){
-  const rows = (dataset.results || []).filter(r => normalizeSpaces(r.name) === normalizeSpaces(skaterName));
-  const allowed = new Set(["OS","WK","EK","NK"]);
-  // Only FINAL A/FINAL, pos=1
-  const elig = rows.filter(r => (r.pos === 1) && (r.runKey === "final a" || r.runKey === "final") && allowed.has(r.tournamentShort));
-  // Deduplicate per (tournamentShort, season, distance)
-  const seen = new Set();
+function computeTitles(dataset, canonName){
+  // Titles = pos 1 only, only OS/WK/EK/NK, only FINAL A/FINAL
+  const rows = (dataset?.results || []).filter(r => normalizeSpaces(r.skaterName) === normalizeSpaces(canonName));
   const counts = { OS:0, WK:0, EK:0, NK:0 };
-  for(const r of elig){
-    const key = `${r.tournamentShort}||${r.season}||${r.distance}`;
+  const seen = new Set();
+  for(const r of rows){
+    if(r.pos !== 1) continue;
+    if(!["OS","WK","EK","NK"].includes(r.tournamentShort)) continue;
+    if(!isFinalRun(r.runKey)) continue;
+    if(!r.season) continue;
+
+    // Unique per tournament+season+distance (avoid duplicates)
+    const key = `${r.tournamentShort}||${r.season}||${normalizeSpaces(r.distance)}`;
     if(seen.has(key)) continue;
     seen.add(key);
     counts[r.tournamentShort]++;
@@ -176,36 +195,38 @@ function computeTitles(dataset, skaterName){
   return counts;
 }
 
-function riderCard({ slotIndex, skaterName, dataset }){
+function riderCard({ slotIndex, canonName, dataset }){
   const posNumber = slotIndex + 1;
 
-  if(!skaterName){
+  if(!canonName){
     return el("div", { class:"fpCard fpCard--empty" },
       el("div", { class:"fpBadge" }, String(posNumber)),
       el("div", { class:"notice" }, "Geen rijder geselecteerd")
     );
   }
 
-  const nat = findSkaterNat(dataset, skaterName) || "";
-  const wt = findWTNameByNat(dataset, nat) || "";
-  const by = parseBirthYear(dataset, skaterName);
+  const sk = findSkaterRow(dataset, canonName);
+  const nat = findNat(dataset, canonName);
+  const wtTeam = findWTTeamNameByNat(dataset, nat);
+  const by = parseBirthYearFromSkatersRow(sk);
   const age = ageFromBirthYear(by);
-  const top = computeTopResults(dataset, skaterName);
-  const titles = computeTitles(dataset, skaterName);
 
-  const lines = top.map(t => {
+  const top = computeTopResults(dataset, canonName);
+  const titles = computeTitles(dataset, canonName);
+
+  const topLines = top.map(t => {
     const years = t.years?.length ? t.years.join(", ") : "—";
     const m = medalIcon(t.pos);
     const prefix = m ? `${m} ` : "";
-    return `${prefix}${t.pos} - ${t.tournamentShort} - ${t.distance} - ${years}`;
+    return `${prefix}${t.pos} - ${t.tShort} - ${t.distance} - ${years}`;
   });
 
   return el("div", { class:"fpCard" },
     el("div", { class:"fpBadge" }, String(posNumber)),
-    el("div", { class:"fpName" }, skaterName),
+    el("div", { class:"fpName" }, canonName),
     el("div", { class:"fpMeta" }, nat || "—"),
-    el("div", { class:"fpMeta" }, wt || "—"),
-    el("div", { class:"fpMeta" }, (age != null ? `${age} jaar` : "— jaar")),
+    el("div", { class:"fpMeta" }, wtTeam || "—"),
+    el("div", { class:"fpMeta" }, age != null ? `${age} jaar` : "— jaar"),
     el("div", { class:"fpTitles" },
       el("div", { class:"fpTitleRow" }, `OS - ${titles.OS}`),
       el("div", { class:"fpTitleRow" }, `WK - ${titles.WK}`),
@@ -213,7 +234,8 @@ function riderCard({ slotIndex, skaterName, dataset }){
       el("div", { class:"fpTitleRow" }, `NK - ${titles.NK}`),
     ),
     el("div", { class:"fpResults" },
-      ...lines.map(s => el("div", { class:"fpResultRow" }, s))
+      ...(topLines.length ? topLines.map(s => el("div", { class:"fpResultRow" }, s))
+        : [el("div", { class:"fpResultRow fpResultRow--muted" }, "Geen topresultaten binnen de voorwaarden (pos 1–5, juiste toernooi/run).")])
     )
   );
 }
@@ -221,9 +243,10 @@ function riderCard({ slotIndex, skaterName, dataset }){
 export async function mountFinalPresentation(root){
   clear(root);
 
-  const meta = loadMeta();
-  const dataset = await loadDataset();
-  if(!dataset || !dataset.results?.length || !dataset.skaters?.length){
+  const meta = loadMeta?.() || null;
+  const dataset = await loadDataset?.();
+
+  if(!dataset?.results?.length || !dataset?.skaters?.length){
     root.appendChild(sectionCard({
       title:"A Final presentation",
       subtitle:"Upload eerst een Excel met tabbladen 'Results' en 'Skaters'.",
@@ -236,18 +259,19 @@ export async function mountFinalPresentation(root){
     return;
   }
 
-  // Rider options from Skaters sheet canonical names
-  const riderOptions = Array.from(new Set(
-    (dataset.skaters || [])
-      .map(r => normalizeSpaces(r.SKATERS ?? r["SKATERS"] ?? ""))
+  // Canonical rider names come from Skaters tab (SKATERS)
+  const skaterNames = Array.from(new Set(
+    dataset.skaters
+      .map(r => r.SKATERS ?? r["SKATERS"] ?? "")
+      .map(normalizeSpaces)
       .filter(Boolean)
   )).sort((a,b)=>a.localeCompare(b));
 
   const slots = new Array(8).fill("");
-  let windowStart = 0; // 0..6
+  let windowStart = 0; // shows windowStart (A) and windowStart+1 (B)
 
   const selectorsGrid = el("div", { class:"fpSelectorsGrid" });
-  const cardWrap = el("div", { class:"fpCompareGrid" });
+  const compareWrap = el("div", { class:"fpCompareWrap" });
 
   function renderSelectors(){
     clear(selectorsGrid);
@@ -255,36 +279,47 @@ export async function mountFinalPresentation(root){
       const dd = typeableDropdown({
         placeholder: `Startpositie ${i+1}`,
         value: slots[i] || "",
-        options: riderOptions,
-        onChange: (v)=>{ slots[i]=v; renderCards(); }
+        options: skaterNames,
+        onChange: (val)=>{
+          slots[i] = val;
+          renderCards();
+        }
       });
-      const cell = el("div", { class:"fpSelectorCell" }, dd);
+
+      const cell = el("div", { class:"fpSelectorCell" }, dd.wrap);
       selectorsGrid.appendChild(cell);
     }
   }
 
   function renderCards(){
-    clear(cardWrap);
+    clear(compareWrap);
 
     const leftIdx = windowStart;
     const rightIdx = windowStart + 1;
 
-    const leftName = slots[leftIdx] || "";
-    const rightName = slots[rightIdx] || "";
-
-    const topBar = el("div", { class:"fpWindowBar" },
-      el("button", { class:"btn btn--icon", type:"button", onclick:()=>{ windowStart = Math.max(0, windowStart-1); renderCards(); } }, "◀"),
-      el("div", { class:"fpWindowLabel" }, `Startpositie ${leftIdx+1} & ${rightIdx+1}`),
-      el("button", { class:"btn btn--icon", type:"button", onclick:()=>{ windowStart = Math.min(6, windowStart+1); renderCards(); } }, "▶"),
+    const bar = el("div", { class:"fpNavBar" },
+      el("button", {
+        class:"btn btn--icon",
+        type:"button",
+        title:"Vorige startpositie",
+        onclick: ()=>{ windowStart = Math.max(0, windowStart - 1); renderCards(); }
+      }, "◀"),
+      el("div", { class:"fpNavLabel" }, `Startpositie ${leftIdx+1} | ${rightIdx+1}`),
+      el("button", {
+        class:"btn btn--icon",
+        type:"button",
+        title:"Volgende startpositie",
+        onclick: ()=>{ windowStart = Math.min(6, windowStart + 1); renderCards(); }
+      }, "▶")
     );
 
-    const grid = el("div", { class:"fpCardsGrid" },
-      riderCard({ slotIndex:leftIdx, skaterName:leftName, dataset }),
-      riderCard({ slotIndex:rightIdx, skaterName:rightName, dataset }),
+    const cards = el("div", { class:"fpCardsGrid" },
+      riderCard({ slotIndex:leftIdx, canonName: slots[leftIdx], dataset }),
+      riderCard({ slotIndex:rightIdx, canonName: slots[rightIdx], dataset })
     );
 
-    cardWrap.appendChild(topBar);
-    cardWrap.appendChild(grid);
+    compareWrap.appendChild(bar);
+    compareWrap.appendChild(cards);
   }
 
   root.appendChild(sectionCard({
@@ -293,7 +328,7 @@ export async function mountFinalPresentation(root){
     children:[
       selectorsGrid,
       el("div", { style:"height:12px" }),
-      cardWrap
+      compareWrap
     ]
   }));
 

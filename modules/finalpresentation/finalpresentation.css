@@ -1,147 +1,110 @@
-/* Scoped to module via module CSS loader. Keep selectors module-specific. */
+/* Scoped for A Final presentation only. Loaded via module_css.js. */
 
-.fpHeader{
-  display:flex;
-  align-items:flex-end;
-  justify-content:space-between;
-  margin-bottom:14px;
-}
-.fpHeader__title{
-  font-size:22px;
-  font-weight:1000;
-  letter-spacing:.2px;
-}
-
-.fpPicksGrid{
+.fpSelectorsGrid{
   display:grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap:10px;
-  margin-bottom:14px;
-}
-
-.fpPick{
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-}
-.fpPick__label{
-  font-size:12px;
-  font-weight:900;
-  color: var(--muted);
-}
-.fpPick__input{
-  width:100%;
-  height:38px;
-  border-radius:12px;
-  border:1px solid var(--line);
-  background: rgba(255,255,255,.04);
-  color: var(--text);
-  padding: 0 12px;
-  font-weight:800;
-  outline:none;
-}
-.fpPick__input:focus{
-  border-color: rgba(82,232,232,.9);
-  box-shadow: 0 0 0 3px rgba(82,232,232,.18);
-}
-
-.fpNav{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:14px;
-  margin: 6px 0 14px;
-}
-.fpNav__btn{
-  width:42px;
-  height:42px;
-  border-radius:999px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:1000;
-}
-.fpNav__text{
-  font-weight:1000;
-  letter-spacing:.2px;
-}
-
-.fpCardsRow{
-  display:grid;
-  grid-template-columns: 1fr 1fr;
-  gap:14px;
-}
-
-.fpCard{
-  border:1px solid var(--line);
-  border-radius:16px;
-  padding:14px;
-  background: rgba(255,255,255,.03);
-}
-.fpCard__top{
-  display:flex;
-  align-items:flex-start;
-  gap:12px;
-  margin-bottom:10px;
-}
-
-.fpPos{
-  width:38px;
-  height:38px;
-  border-radius:999px;
-  border:1px solid var(--line);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:1000;
-}
-
-.fpCard__info{
-  display:flex;
-  flex-direction:column;
-  gap:4px;
-}
-.fpName{
-  font-size:18px;
-  font-weight:1000;
-  line-height:1.1;
-}
-.fpMeta{
-  font-size:13px;
-  font-weight:800;
-  color: var(--muted);
-}
-
-.fpTitles{
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  margin-bottom:10px;
-}
-.fpTitleChip{
-  border:1px solid var(--line);
-  border-radius:999px;
-  padding:6px 10px;
-  font-size:12px;
-  font-weight:1000;
-  background: rgba(255,255,255,.03);
-}
-
-.fpLines{
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
-.fpLine{
-  font-size:13px;
-  font-weight:850;
-  color: var(--text);
-}
-.fpLine--muted{
-  color: var(--muted);
+  gap: 10px;
 }
 
 @media (max-width: 900px){
-  .fpPicksGrid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
-  .fpCardsRow{ grid-template-columns: 1fr; }
+  .fpSelectorsGrid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+.fpSelectorCell .dropdown{ width:100%; }
+
+/* Compact dropdown matches Biography/Champions styles */
+.dropdown--compact{ position:relative; }
+.input--compact{ height: 36px; }
+
+.fpCompareGrid{ display:flex; flex-direction:column; gap: 10px; }
+
+.fpWindowBar{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap: 12px;
+}
+
+.fpWindowLabel{
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.fpCardsGrid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items:stretch;
+}
+
+@media (max-width: 900px){
+  .fpCardsGrid{ grid-template-columns: 1fr; }
+}
+
+.fpCard{
+  position:relative;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  border-radius: 16px;
+  padding: 16px 16px 14px 16px;
+  min-height: 260px;
+}
+
+.fpCard--empty{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:flex-start;
+}
+
+.fpBadge{
+  position:absolute;
+  top: 12px;
+  left: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.25);
+  font-weight: 700;
+}
+
+.fpName{
+  margin-left: 44px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.fpMeta{
+  margin-left: 44px;
+  font-size: 13px;
+  opacity: 0.9;
+  line-height: 1.35;
+}
+
+.fpTitles{
+  margin-top: 10px;
+  margin-left: 44px;
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 10px;
+  font-size: 12px;
+  opacity: 0.95;
+}
+
+.fpTitleRow{ white-space:nowrap; }
+
+.fpResults{
+  margin-top: 10px;
+  margin-left: 44px;
+  display:flex;
+  flex-direction:column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.fpResultRow{ opacity: 0.95; }

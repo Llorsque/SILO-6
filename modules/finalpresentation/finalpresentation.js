@@ -1,8 +1,9 @@
-
 /**
  * SILO — Module: A Final presentation
- * Scope: ONLY modules/finalpresentation/*
- * Does NOT touch header, global CSS, routing, or other modules.
+ *
+ * SCOPE GUARANTEE
+ * - Only this module folder is touched (modules/finalpresentation/*)
+ * - No changes to header, routing, global CSS or other modules
  */
 
 import { el, clear } from "../../core/dom.js";
@@ -10,424 +11,438 @@ import { sectionCard } from "../../core/layout.js";
 import { router } from "../../core/router.js";
 import { loadDataset, loadMeta } from "../../core/storage.js";
 
-/* ------------------------- helpers: normalize & getters ------------------------- */
+/* ----------------------------- small utilities ----------------------------- */
 
-const norm = (v) => String(v ?? "").replace(/\s+/g, " ").trim();
-const normKey = (v) => norm(v).toLowerCase();
+function normalizeSpaces(s){ return String(s ?? "").replace(/\s+/g, " ").trim(); }
 
-function pick(obj, keys) {
-  for (const k of keys) {
-    if (obj && Object.prototype.hasOwnProperty.call(obj, k) && obj[k] != null && String(obj[k]).trim() !== "") return obj[k];
-  }
+function medalEmoji(pos){
+  if(pos === 1) return "🥇";
+  if(pos === 2) return "🥈";
+  if(pos === 3) return "🥉";
   return "";
 }
 
-function asInt(v) {
-  const n = Number(String(v ?? "").replace(",", ".").trim());
-  return Number.isFinite(n) ? n : null;
+function tournamentPriority(short){
+  // User requirement: OS > WK > EK > Eindklassement WC/WT > NK
+  if(short === "OS") return 1;
+  if(short === "WK") return 2;
+  if(short === "EK") return 3;
+  if(short === "WC") return 4;
+  if(short === "NK") return 5;
+  return 99;
 }
 
-/* ------------------------- typeable dropdown ------------------------- */
+function toernooiLabel(short){
+  if(short === "WC") return "WC/WT";
+  return short || "";
+}
 
-function TypeableDropdown({ placeholder, value, options, onPick }) {
-  const wrap = el("div", { class: "fp-dd" });
-  const input = el("input", {
-    class: "fp-input",
-    placeholder,
-    value: value || "",
-    autocomplete: "off",
-    spellcheck: "false"
-  });
-  const list = el("div", { class: "fp-dd__list" });
+function getSkaterNames(dataset){
+  return Array.from(new Set(
+    (dataset?.skaters || [])
+      .map(r => r.SKATERS ?? r["SKATERS"] ?? "")
+      .map(normalizeSpaces)
+      .filter(Boolean)
+  )).sort((a,b)=>a.localeCompare(b));
+}
 
-  let open = false;
+function findSkaterRow(dataset, name){
+  const target = normalizeSpaces(name);
+  return (dataset?.skaters || []).find(r => normalizeSpaces(r.SKATERS ?? r["SKATERS"] ?? "") === target) || null;
+}
 
-  const setOpen = (v) => {
-    open = v;
-    list.style.display = open ? "block" : "none";
-    if (open) renderList();
-  };
+function findWTNameByNat(dataset, nat){
+  const code = normalizeSpaces(nat).toUpperCase();
+  if(!code) return { country:"", wtName:"" };
+  const row = (dataset?.wtNames || []).find(r => String(r.NAT ?? r["NAT"] ?? "").toUpperCase() === code);
+  if(!row) return { country:"", wtName:"" };
+  const country = normalizeSpaces(row.COUNTRY ?? row["COUNTRY"] ?? "");
+  const wtName = normalizeSpaces(row["WT NAME"] ?? row["WT NAME "] ?? row.WT_NAME ?? row["WT_NAME"] ?? "");
+  return { country, wtName };
+}
 
-  const renderList = () => {
-    clear(list);
-    const q = normKey(input.value);
-    const filtered = options
-      .filter((o) => normKey(o).includes(q))
-      .slice(0, 80);
-
-    if (!filtered.length) {
-      list.appendChild(el("div", { class: "fp-dd__item fp-dd__item--muted" }, "Geen resultaten"));
-      return;
-    }
-    for (const o of filtered) {
-      const item = el("div", { class: "fp-dd__item" }, o);
-      item.addEventListener("click", () => {
-        input.value = o;
-        onPick?.(o);
-        setOpen(false);
-      });
-      list.appendChild(item);
-    }
-  };
-
-  function commitIfExactMatch(){
-    const typed = norm(input.value);
-    if(!typed) return;
-    const match = options.find(o => normKey(o) === normKey(typed));
-    if(match){
-      input.value = match;
-      onPick?.(match);
-    }
+function inferBirthYear(skaterRow){
+  if(!skaterRow) return null;
+  const candidates = [];
+  for(const k of ["DOB","Dob","BIRTHDATE","Birthdate","Birth date","Date of Birth","Geboortedatum","BirthYear","BIRTHYEAR","Birth year","Geboortejaar","YEAR","Year"]){
+    if(skaterRow[k] != null && String(skaterRow[k]).trim() !== "") candidates.push(skaterRow[k]);
   }
-
-  input.addEventListener("focus", () => setOpen(true));
-  input.addEventListener("input", () => { if (!open) setOpen(true); renderList(); });
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") setOpen(false);
-    if (e.key === "Enter") {
-      e.preventDefault();
-      commitIfExactMatch();
-      setOpen(false);
-    }
-  });
-
-  input.addEventListener("blur", () => {
-    // If the user typed a full name and tabs away, treat it as selection.
-    commitIfExactMatch();
-  });
-
-  document.addEventListener("click", (e) => {
-    if (!wrap.contains(e.target)) setOpen(false);
-  });
-
-  wrap.appendChild(input);
-  wrap.appendChild(list);
-  return wrap;
-}
-
-/* ------------------------- dataset adapters ------------------------- */
-
-function getSheets(dataset) {
-  // In SILO v6 dev: dataset is stored normalized by core/excel.js
-  // {
-  //   results: NormalizedResultRow[]  (keys: skaterName,pos,tournament,tournamentShort,runKey,season,distance,...)
-  //   skaters: raw Skaters sheet rows
-  //   wtNames: raw WT Names sheet rows
-  //   nameMap: { [normalizedKey]: canonicalName }
-  // }
-  const results = dataset?.results || [];
-  const skaters = dataset?.skaters || [];
-  const wtNames = dataset?.wtNames || [];
-  return { results, skaters, wtNames };
-}
-
-function buildSkaterCanonicalMap(skatersRows) {
-  // Keep a small helper map for robustness, but Results are already canonicalized
-  // by core/excel.js using Skaters sheet.
-  const map = new Map();
-  for (const r of skatersRows || []) {
-    const canonical = norm(r.SKATERS ?? r["SKATERS"] ?? "");
-    const original = norm(r.ORIGINAL ?? r["ORIGINAL"] ?? "");
-    if (canonical) map.set(normKey(canonical), canonical);
-    if (original) map.set(normKey(original), canonical);
+  // Fallback: scan all values for a 4-digit year
+  for(const v of Object.values(skaterRow)){
+    if(v == null) continue;
+    const s = String(v).trim();
+    if(!s) continue;
+    const m = s.match(/(19\d{2}|20\d{2})/);
+    if(m){ candidates.push(m[1]); break; }
   }
-  return map;
-}
-
-function canonicalizeName(name, canonicalMap) {
-  const k = normKey(name);
-  if (!k) return "";
-  return canonicalMap.get(k) || norm(name);
-}
-
-function skaterInfoByName(skatersRows, canonicalName) {
-  const target = norm(canonicalName);
-  const row = (skatersRows || []).find(r => norm(r.SKATERS ?? r["SKATERS"] ?? "") === target);
-  if (!row) return { nat:"", birthYear:null };
-
-  const nat = norm(row.NAT ?? row["NAT"] ?? "");
-
-  const candidates = [
-    pick(row, ["DOB","Dob","Geboortedatum","Birthdate","Birth date","Date of Birth","BIRTHDATE"]),
-    pick(row, ["BirthYear","BIRTHYEAR","Birth year","Geboortejaar","YEAR","Year"]),
-  ].filter(v => v != null && String(v).trim() !== "");
-
-  let birthYear = null;
-  for (const c of candidates) {
+  for(const c of candidates){
     const s = String(c).trim();
     const m = s.match(/(19\d{2}|20\d{2})/);
-    if (m) { birthYear = Number(m[1]); break; }
+    if(m) return Number(m[1]);
   }
-
-  return { nat, birthYear };
+  return null;
 }
 
-function wtTeamByNat(wtRows, nat) {
-  const code = norm(nat).toUpperCase();
-  if (!code) return "";
-  // WT Names sheet: typically columns NAT, COUNTRY, WT NAME (team)
-  const row = (wtRows || []).find(r => String(r.NAT ?? r["NAT"] ?? "").toUpperCase() === code);
-  if (!row) {
-    return "";
-  }
-  return norm(row["WT NAME"] ?? row["WT NAME "] ?? row.WT_NAME ?? row["WT_NAME"] ?? row["WT NAME"] ?? "");
-}
-
-function ageFromBirthYear(birthYear) {
-  if (!Number.isFinite(birthYear)) return null;
+function ageFromBirthYear(birthYear){
+  if(!Number.isFinite(birthYear)) return null;
   const now = new Date();
   return now.getFullYear() - birthYear;
 }
 
-/* ------------------------- tournament mapping ------------------------- */
+/* --------------------------- shared typeable dropdown --------------------------- */
 
-function tournamentShortFromRow(r) {
-  // Prefer normalized key from import
-  const t = norm(r?.tournamentShort || "");
-  if (t) return t;
-  // Fallback
-  const w = normKey(r?.tournament || r?.wedstrijdRaw || "");
-  if (w.includes("world cup") || w.includes("world tour")) return "WC";
-  if (w.includes("olymp")) return "OS";
-  if (w.includes("wereld")) return "WK";
-  if (w.includes("europe") || w.includes("europ")) return "EK";
-  if (w.includes("neder")) return "NK";
-  return "";
-}
+function typeableDropdown({ placeholder, value, options, onChange }){
+  const wrap = el("div", { class:"dropdown" });
+  const input = el("input", { class:"input", placeholder, value: value || "" });
+  const list = el("div", { class:"dropdown__list" });
+  let open = false;
 
-const TOUR_PRIORITY = { OS: 1, WK: 2, EK: 3, WC: 4, NK: 5 };
-function tourOrder(short) { return TOUR_PRIORITY[short] ?? 99; }
+  function renderList(){
+    clear(list);
+    const q = (input.value || "").toLowerCase().trim();
+    const filtered = options
+      .filter(o => o.toLowerCase().includes(q))
+      .slice(0, 120);
 
-function runKeyFromRow(r) {
-  const k = normKey(r?.runKey || r?.runRaw || r?.run || "");
-  if (!k) return "";
-  if (k.includes("final a")) return "final a";
-  if (k === "final" || k.includes("final")) return "final";
-  if (k.includes("eind") || k.includes("overall")) return "eindklassement";
-  return k;
-}
-
-function medalEmoji(pos) {
-  if (pos === 1) return "🥇";
-  if (pos === 2) return "🥈";
-  if (pos === 3) return "🥉";
-  return "";
-}
-
-/* ------------------------- results selection logic ------------------------- */
-
-function computeTopResults(resultsRows, canonicalName) {
-  const rows = (resultsRows || []).filter(r => r?.skaterName === canonicalName);
-
-  const eligible = rows.filter(r => {
-    const pos = r.pos;
-    if (!(pos >= 1 && pos <= 5)) return false;
-    const tShort = tournamentShortFromRow(r);
-    const rk = runKeyFromRow(r);
-    if (tShort === "WC") {
-      // WC/WT: only overall/eindklassement
-      return rk === "eindklassement" || normKey(r.distance).includes("eindklassement");
+    if(!filtered.length){
+      list.appendChild(el("div", { class:"dropdown__item dropdown__item--muted" }, "Geen resultaten"));
+      return;
     }
-    // For tournament highlights we only accept Final A/Final to avoid heats
-    if (!(rk === "final a" || rk === "final")) return false;
-    return ["OS","WK","EK","NK"].includes(tShort);
-  });
-
-  const gmap = new Map();
-  for (const r of eligible) {
-    const pos = r.pos;
-    const tShort = tournamentShortFromRow(r);
-    const dist = norm(r.distance || r.afstandRaw || "");
-    const season = r.season;
-    const key = `${pos}||${tShort}||${normKey(dist)}`;
-    const g = gmap.get(key) || { pos, tShort, afstand: dist, years: new Set() };
-    if (Number.isFinite(season)) g.years.add(season);
-    gmap.set(key, g);
+    for(const o of filtered){
+      const it = el("div", { class:"dropdown__item" }, o);
+      it.addEventListener("click", () => {
+        onChange(o);
+        setOpen(false);
+      });
+      list.appendChild(it);
+    }
   }
 
-  let list = Array.from(gmap.values()).map(g => ({
-    ...g,
-    years: Array.from(g.years).filter(Number.isFinite).sort((a,b)=>b-a)
-  }));
+  function setOpen(v){
+    open = v;
+    if(open){
+      renderList();
+      list.classList.add("dropdown__list--open");
+    }else{
+      list.classList.remove("dropdown__list--open");
+    }
+  }
 
-  list.sort((a,b)=>{
-    if (a.pos !== b.pos) return a.pos - b.pos;
-    const ao = tourOrder(a.tShort);
-    const bo = tourOrder(b.tShort);
-    if (ao !== bo) return ao - bo;
-    const ay = a.years[0] ?? -Infinity;
-    const by = b.years[0] ?? -Infinity;
-    return by - ay;
+  function tryCommitExactMatch(){
+    const t = normalizeSpaces(input.value);
+    if(!t) return;
+    const found = options.find(o => normalizeSpaces(o).toLowerCase() === t.toLowerCase());
+    if(found){ onChange(found); }
+  }
+
+  input.addEventListener("focus", ()=> setOpen(true));
+  input.addEventListener("input", ()=> { if(!open) setOpen(true); renderList(); });
+  input.addEventListener("keydown", (e)=>{
+    if(e.key === "Escape") setOpen(false);
+    if(e.key === "Enter"){
+      e.preventDefault();
+      tryCommitExactMatch();
+      setOpen(false);
+    }
+  });
+  input.addEventListener("blur", ()=>{
+    // if user typed the full name, commit it
+    tryCommitExactMatch();
   });
 
-  return list.slice(0, 5);
+  // Outside click closes list
+  document.addEventListener("click", (e)=>{ if(!wrap.contains(e.target)) setOpen(false); });
+
+  wrap.appendChild(input);
+  wrap.appendChild(list);
+  return { wrap, input, setValue: (v)=>{ input.value = v || ""; } };
 }
 
-function computeTitleCounts(resultsRows, canonicalName) {
-  const rows = (resultsRows || []).filter(r => r?.skaterName === canonicalName);
+/* ------------------------------ results logic ------------------------------ */
 
+function isWCOverall(row){
+  // Only count WC/WT for overall/eindklassement
+  const rk = String(row?.runKey || "").toLowerCase();
+  const dist = String(row?.distance || "").toLowerCase();
+  return rk.includes("eindklassement") || dist.includes("eindklassement") || dist.includes("overall");
+}
+
+function eligibleRow(row){
+  // Positie 1..5
+  if(!(row?.pos >= 1 && row?.pos <= 5)) return false;
+  const t = row?.tournamentShort;
+  if(t === "WC") return isWCOverall(row);
+  return t === "OS" || t === "WK" || t === "EK" || t === "NK";
+}
+
+function groupTopResults(rows){
+  // Group by pos + tournamentShort + distance (ignore date), collect seasons
+  const byKey = new Map();
+  for(const r of rows){
+    if(!eligibleRow(r)) continue;
+    const key = `${r.pos}__${r.tournamentShort}__${r.distance}`;
+    if(!byKey.has(key)){
+      byKey.set(key, {
+        pos: r.pos,
+        tournamentShort: r.tournamentShort,
+        distance: r.distance,
+        seasons: new Set(),
+        yearMax: null
+      });
+    }
+    const g = byKey.get(key);
+    if(Number.isFinite(r.season)){
+      g.seasons.add(r.season);
+      g.yearMax = g.yearMax == null ? r.season : Math.max(g.yearMax, r.season);
+    }
+  }
+  const groups = Array.from(byKey.values());
+  groups.sort((a,b)=>{
+    if(a.pos !== b.pos) return a.pos - b.pos;
+    const ta = tournamentPriority(a.tournamentShort);
+    const tb = tournamentPriority(b.tournamentShort);
+    if(ta !== tb) return ta - tb;
+    const ya = a.yearMax ?? -9999;
+    const yb = b.yearMax ?? -9999;
+    return yb - ya; // newest first
+  });
+  return groups.slice(0,5).map(g => {
+    const years = Array.from(g.seasons).filter(Boolean).sort((a,b)=>b-a);
+    return {
+      pos: g.pos,
+      toernooi: toernooiLabel(g.tournamentShort),
+      distance: g.distance,
+      years
+    };
+  });
+}
+
+function computeTitles(rows){
+  // Only pos=1, tournaments OS/WK/EK/NK, dedupe per tournament+season+distance.
   const counts = { OS:0, WK:0, EK:0, NK:0 };
   const seen = new Set();
-
-  for (const r of rows) {
-    if (r.pos !== 1) continue;
-    const tShort = tournamentShortFromRow(r);
-    if (!["OS","WK","EK","NK"].includes(tShort)) continue;
-    const rk = runKeyFromRow(r);
-    if (!(rk === "final a" || rk === "final")) continue;
-    const dist = norm(r.distance || r.afstandRaw || "");
-    const season = r.season;
-    const key = `${tShort}||${season}||${normKey(dist)}`;
-    if (seen.has(key)) continue;
+  for(const r of rows){
+    if(r?.pos !== 1) continue;
+    const t = r?.tournamentShort;
+    if(!(t === "OS" || t === "WK" || t === "EK" || t === "NK")) continue;
+    // Avoid heats/series: only finals or overall
+    const rk = String(r?.runKey || "");
+    if(!(rk === "final a" || rk === "final" || rk === "eindklassement")) continue;
+    const season = Number.isFinite(r?.season) ? r.season : "";
+    const key = `${t}__${season}__${r.distance}`;
+    if(seen.has(key)) continue;
     seen.add(key);
-    counts[tShort]++;
+    counts[t] += 1;
   }
-
   return counts;
 }
 
-/* ------------------------- UI: rider card ------------------------- */
+/* ------------------------------ module mount ------------------------------ */
 
-function RiderCard({ slotIndex, name, skatersRows, wtRows, resultsRows }) {
-  const badge = el("div", { class: "fp-badge" }, String(slotIndex + 1));
-
-  if (!name) {
-    return el("div", { class: "fp-card fp-card--empty" },
-      badge,
-      el("div", { class: "fp-empty" }, "Geen rijder geselecteerd")
-    );
-  }
-
-  const { nat, birthYear } = skaterInfoByName(skatersRows, name);
-  const team = wtTeamByNat(wtRows, nat);
-  const age = ageFromBirthYear(birthYear);
-
-  const top = computeTopResults(resultsRows, name);
-  const titles = computeTitleCounts(resultsRows, name);
-
-  const lines = top.map(t => {
-    const years = t.years?.length ? t.years.join(", ") : "—";
-    const m = medalEmoji(t.pos);
-    const prefix = m ? `${m} ` : "";
-    return `${prefix}${t.pos} - ${t.tShort} - ${t.afstand} - ${years}`;
-  });
-
-  return el("div", { class: "fp-card" },
-    badge,
-    el("div", { class: "fp-name" }, name),
-    el("div", { class: "fp-meta" }, nat || "—"),
-    el("div", { class: "fp-meta" }, team || "—"),
-    el("div", { class: "fp-meta" }, (age != null ? `${age} jaar` : "— jaar")),
-    el("div", { class: "fp-titles" },
-      el("div", { class: "fp-title" }, `OS - ${titles.OS}`),
-      el("div", { class: "fp-title" }, `WK - ${titles.WK}`),
-      el("div", { class: "fp-title" }, `EK - ${titles.EK}`),
-      el("div", { class: "fp-title" }, `NK - ${titles.NK}`),
-    ),
-    el("div", { class: "fp-results" },
-      ...lines.map(s => el("div", { class: "fp-result" }, s))
-    )
-  );
-}
-
-/* ------------------------- mount ------------------------- */
-
-export async function mountFinalPresentation(root) {
+export async function mountFinalPresentation(root){
   clear(root);
 
-  const meta = loadMeta?.() || {};
+  const meta = loadMeta?.() || null;
   const dataset = await loadDataset?.();
-  const { results, skaters, wtNames } = getSheets(dataset || {});
 
-  if (!dataset || !Array.isArray(skaters) || skaters.length === 0 || !Array.isArray(results) || results.length === 0) {
+  if(!dataset?.results?.length || !dataset?.skaters?.length){
     root.appendChild(sectionCard({
-      title: "A Final presentation",
-      subtitle: "Upload eerst een Excel met tabbladen 'Results' en 'Skaters'.",
-      children: [
-        el("div", { class: "notice" }, "Geen dataset gekoppeld (of leeg)."),
-        el("div", { style: "height:10px" }),
-        el("button", { class: "btn", type:"button", onclick: () => router.go("home") }, "Terug naar menu")
+      title:"A Final presentation",
+      subtitle:"Upload eerst een Excel met tabbladen 'Results' en 'Skaters'.",
+      children:[
+        el("div", { class:"notice" }, "Geen dataset gekoppeld (of leeg). Ga terug naar Menu en upload je Excel."),
+        el("div", { style:"height:10px" }),
+        el("button", { class:"btn", type:"button", onclick:()=>router.go("home") }, "Terug naar menu")
       ]
     }));
     return;
   }
 
-  const riderOptions = Array.from(new Set(
-    (skaters || [])
-      .map(r => norm(pick(r, ["SKATERS","Skaters","Naam","NAME","Name","D"])))
-      .filter(Boolean)
-  )).sort((a,b)=>a.localeCompare(b));
+  const skaterNames = getSkaterNames(dataset);
+  const resultsAll = dataset.results;
 
-  // Results are already mapped to canonical names via dataset.nameMap, but we keep
-  // this for extra robustness when looking up Skaters rows.
-  buildSkaterCanonicalMap(skaters);
+  // Pre-index results per skater for speed
+  const resultsBySkater = new Map();
+  for(const r of resultsAll){
+    const n = r?.skaterName;
+    if(!n) continue;
+    if(!resultsBySkater.has(n)) resultsBySkater.set(n, []);
+    resultsBySkater.get(n).push(r);
+  }
 
-  const slots = Array(8).fill("");
-  let windowStart = 0;
+  const state = {
+    slots: Array.from({ length: 8 }, ()=>""),
+    viewStart: 1 // 1..7 (because we show 2)
+  };
 
-  const selectors = el("div", { class: "fp-selectors" });
-  const display = el("div", { class: "fp-display" });
+  const header = sectionCard({
+    title:"A Final presentation",
+    subtitle:"Selecteer startposities (1–8). Je bekijkt steeds 2 rijders naast elkaar en schuift met Vorige/Volgende.",
+    children:[]
+  });
 
-  function renderSelectors() {
-    clear(selectors);
-    for (let i = 0; i < 8; i++) {
-      const dd = TypeableDropdown({
-        placeholder: `Startpositie ${i+1}`,
-        value: slots[i] || "",
-        options: riderOptions,
-        onPick: (picked) => {
-          slots[i] = picked;
-          renderDisplay();
+  const selectorsCard = el("div", { class:"card" });
+  const navRow = el("div", { class:"fp-nav" });
+  const cardsWrap = el("div", { class:"fp-cards" });
+
+  header.appendChild(selectorsCard);
+  header.appendChild(el("div", { style:"height:12px" }));
+  header.appendChild(navRow);
+  header.appendChild(el("div", { style:"height:12px" }));
+  header.appendChild(cardsWrap);
+
+  root.appendChild(header);
+
+  /* ----------------------------- selectors UI ----------------------------- */
+
+  const dropdownRefs = [];
+
+  function renderSelectors(){
+    clear(selectorsCard);
+    selectorsCard.appendChild(el("div", { class:"card__title" }, "Startposities"));
+    selectorsCard.appendChild(el("div", { class:"card__sub" }, "2 rijen van 4 – typ om snel een rijder te vinden."));
+    selectorsCard.appendChild(el("div", { class:"hr" }));
+
+    const grid = el("div", { class:"fp-select-grid" });
+    dropdownRefs.length = 0;
+
+    for(let i=0;i<8;i++){
+      const pos = i + 1;
+      const group = el("div", { class:"filterGroup fp-slot" });
+      group.appendChild(el("div", { class:"filterLabel" }, `Startpositie ${pos}`));
+      const dd = typeableDropdown({
+        placeholder:"Typ om te zoeken...",
+        value: state.slots[i] || "",
+        options: skaterNames,
+        onChange: (val)=>{
+          state.slots[i] = val;
+          dd.setValue(val);
+          renderCards();
         }
       });
-      selectors.appendChild(el("div", { class: "fp-selectors__cell" }, dd));
+      group.appendChild(dd.wrap);
+      dropdownRefs.push(dd);
+      grid.appendChild(group);
     }
+
+    selectorsCard.appendChild(grid);
   }
 
-  function renderDisplay() {
-    clear(display);
+  /* ----------------------------- navigation UI ---------------------------- */
 
-    const leftIdx = windowStart;
-    const rightIdx = windowStart + 1;
+  function renderNav(){
+    clear(navRow);
+    const leftPos = state.viewStart;
+    const rightPos = state.viewStart + 1;
 
-    const prevBtn = el("button", {
-      class: "btn btn--icon",
-      type: "button",
-      disabled: windowStart === 0,
-      onclick: () => { windowStart = Math.max(0, windowStart - 1); renderDisplay(); }
-    }, "◀");
+    const btnPrev = el("button", { class:"btn btn--ghost", type:"button" }, "←");
+    const btnNext = el("button", { class:"btn btn--ghost", type:"button" }, "→");
+    const title = el("div", { class:"fp-nav__title" }, `Startpositie ${leftPos} & ${rightPos}`);
 
-    const nextBtn = el("button", {
-      class: "btn btn--icon",
-      type: "button",
-      disabled: windowStart === 6,
-      onclick: () => { windowStart = Math.min(6, windowStart + 1); renderDisplay(); }
-    }, "▶");
+    btnPrev.disabled = state.viewStart <= 1;
+    btnNext.disabled = state.viewStart >= 7;
+    btnPrev.classList.toggle("fp-nav__btn--disabled", btnPrev.disabled);
+    btnNext.classList.toggle("fp-nav__btn--disabled", btnNext.disabled);
 
-    const bar = el("div", { class: "fp-bar" },
-      prevBtn,
-      el("div", { class: "fp-bar__label" }, `Startpositie ${leftIdx+1} & ${rightIdx+1}`),
-      nextBtn
-    );
+    btnPrev.addEventListener("click", ()=>{
+      if(state.viewStart <= 1) return;
+      state.viewStart -= 1;
+      renderCards();
+    });
+    btnNext.addEventListener("click", ()=>{
+      if(state.viewStart >= 7) return;
+      state.viewStart += 1;
+      renderCards();
+    });
 
-    const grid = el("div", { class: "fp-grid" },
-      RiderCard({ slotIndex: leftIdx, name: slots[leftIdx], skatersRows: skaters, wtRows: wtNames, resultsRows: results }),
-      RiderCard({ slotIndex: rightIdx, name: slots[rightIdx], skatersRows: skaters, wtRows: wtNames, resultsRows: results }),
-    );
-
-    display.appendChild(bar);
-    display.appendChild(grid);
+    navRow.appendChild(btnPrev);
+    navRow.appendChild(title);
+    navRow.appendChild(btnNext);
   }
 
-  root.appendChild(sectionCard({
-    title: "A Final presentation",
-    subtitle: meta?.datasetName ? `Dataset: ${meta.datasetName}` : "Selecteer rijders per startpositie.",
-    children: [selectors, el("div", { style:"height:12px" }), display]
-  }));
+  /* ------------------------------- card render ------------------------------ */
+
+  function renderSkaterCard(slotIndex){
+    const posNumber = slotIndex + 1;
+    const name = state.slots[slotIndex];
+
+    const card = el("div", { class:"card fp-card" });
+    const top = el("div", { class:"fp-card__top" });
+    const badge = el("div", { class:"fp-badge" }, String(posNumber));
+    top.appendChild(badge);
+
+    const body = el("div", { class:"fp-card__body" });
+    if(!name){
+      body.appendChild(el("div", { class:"notice" }, `Selecteer een rijder voor startpositie ${posNumber}.`));
+      card.appendChild(top);
+      card.appendChild(body);
+      return card;
+    }
+
+    const sk = findSkaterRow(dataset, name);
+    const nat = normalizeSpaces(sk?.NAT ?? sk?.["NAT"] ?? "");
+    const wt = findWTNameByNat(dataset, nat);
+    const birthYear = inferBirthYear(sk);
+    const age = ageFromBirthYear(birthYear);
+
+    const lines = el("div", { class:"fp-lines" }, [
+      el("div", { class:"fp-name" }, name),
+      el("div", { class:"fp-sub" }, wt?.country || nat || "—"),
+      el("div", { class:"fp-sub" }, wt?.wtName || "—"),
+      el("div", { class:"fp-sub" }, age != null ? `${age} jaar` : "— jaar")
+    ]);
+    body.appendChild(lines);
+
+    // Top results
+    const riderRows = resultsBySkater.get(name) || [];
+    const topResults = groupTopResults(riderRows);
+
+    const resultsBox = el("div", { class:"fp-results" });
+    resultsBox.appendChild(el("div", { class:"fp-section-title" }, "Belangrijkste resultaten"));
+
+    if(!topResults.length){
+      resultsBox.appendChild(el("div", { class:"fp-muted" }, "Geen resultaten (pos 1–5) gevonden binnen OS/WK/EK/NK en Eindklassement WC/WT."));
+    }else{
+      const ul = el("ul", { class:"fp-list" });
+      for(const r of topResults){
+        const years = (r.years || []).join(", ");
+        const medal = medalEmoji(r.pos);
+        const txt = `${medal ? medal + " " : ""}${r.pos} - ${r.toernooi} - ${r.distance} - ${years || "—"}`;
+        ul.appendChild(el("li", null, txt));
+      }
+      resultsBox.appendChild(ul);
+    }
+
+    // Titles summary (pos=1)
+    const titles = computeTitles(riderRows);
+    const titlesBox = el("div", { class:"fp-titles" });
+    titlesBox.appendChild(el("div", { class:"fp-section-title" }, "Titels (positie 1)"));
+    titlesBox.appendChild(el("div", { class:"fp-titles-grid" }, [
+      el("div", { class:"fp-titleItem" }, `OS - ${titles.OS}`),
+      el("div", { class:"fp-titleItem" }, `WK - ${titles.WK}`),
+      el("div", { class:"fp-titleItem" }, `EK - ${titles.EK}`),
+      el("div", { class:"fp-titleItem" }, `NK - ${titles.NK}`),
+    ]));
+
+    body.appendChild(el("div", { class:"hr" }));
+    body.appendChild(titlesBox);
+    body.appendChild(el("div", { style:"height:10px" }));
+    body.appendChild(resultsBox);
+
+    card.appendChild(top);
+    card.appendChild(body);
+    return card;
+  }
+
+  function renderCards(){
+    renderNav();
+    clear(cardsWrap);
+    const leftIndex = state.viewStart - 1;
+    const rightIndex = state.viewStart;
+    cardsWrap.appendChild(renderSkaterCard(leftIndex));
+    cardsWrap.appendChild(renderSkaterCard(rightIndex));
+  }
 
   renderSelectors();
-  renderDisplay();
+  renderCards();
 }
-
-export const mountAFinalPresentation = mountFinalPresentation;
-export default mountFinalPresentation;

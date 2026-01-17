@@ -1,59 +1,106 @@
-/* Module-scoped styles for A Final presentation only */
 
-.fpSelectorsGrid{
+/* SILO — A Final presentation (scoped). Only used by this module. */
+
+.fp-selectors{
   display:grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
 
 @media (max-width: 900px){
-  .fpSelectorsGrid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fp-selectors{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-.fpSelectorCell .dropdown{ width:100%; }
+.fp-selectors__cell{ position:relative; }
 
-.fpCompareWrap{ display:flex; flex-direction:column; gap: 10px; }
+/* dropdown */
+.fp-dd{ position:relative; width:100%; }
+.fp-input{
+  width:100%;
+  height:36px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  color: inherit;
+}
+.fp-input:focus{
+  outline: none;
+  border-color: rgba(82,232,232,0.55);
+  box-shadow: 0 0 0 3px rgba(82,232,232,0.12);
+}
 
-.fpNavBar{
+.fp-dd__list{
+  display:none;
+  position:absolute;
+  z-index: 50;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 260px;
+  overflow:auto;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(20,24,40,0.98);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+}
+
+.fp-dd__item{
+  padding: 10px 12px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 14px;
+}
+.fp-dd__item:hover{ background: rgba(82,232,232,0.10); }
+.fp-dd__item--muted{ opacity: 0.7; cursor: default; }
+
+/* display area */
+.fp-display{
+  display:flex;
+  flex-direction:column;
+  gap: 10px;
+}
+
+.fp-bar{
   display:flex;
   align-items:center;
   justify-content:center;
   gap: 12px;
 }
 
-.fpNavLabel{
+.fp-bar__label{
   font-weight: 700;
-  opacity: 0.92;
+  opacity: 0.95;
 }
 
-.fpCardsGrid{
+.fp-grid{
   display:grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
-  align-items:stretch;
 }
 
 @media (max-width: 900px){
-  .fpCardsGrid{ grid-template-columns: 1fr; }
+  .fp-grid{ grid-template-columns: 1fr; }
 }
 
-.fpCard{
+/* rider card */
+.fp-card{
   position:relative;
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.10);
   background: rgba(255,255,255,0.03);
   border-radius: 16px;
   padding: 16px 16px 14px 16px;
   min-height: 260px;
 }
 
-.fpCard--empty{
+.fp-card--empty{
   display:flex;
   flex-direction:column;
   justify-content:center;
   align-items:flex-start;
 }
 
-.fpBadge{
+.fp-badge{
   position:absolute;
   top: 12px;
   left: 12px;
@@ -63,26 +110,26 @@
   display:flex;
   align-items:center;
   justify-content:center;
-  border: 1px solid rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.16);
   background: rgba(0,0,0,0.25);
   font-weight: 800;
 }
 
-.fpName{
+.fp-name{
   margin-left: 44px;
   font-size: 20px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
+  font-weight: 900;
+  letter-spacing: 0.01em;
 }
 
-.fpMeta{
+.fp-meta{
   margin-left: 44px;
   font-size: 13px;
   opacity: 0.9;
   line-height: 1.35;
 }
 
-.fpTitles{
+.fp-titles{
   margin-top: 10px;
   margin-left: 44px;
   display:grid;
@@ -92,9 +139,9 @@
   opacity: 0.95;
 }
 
-.fpTitleRow{ white-space:nowrap; }
+.fp-title{ white-space: nowrap; }
 
-.fpResults{
+.fp-results{
   margin-top: 10px;
   margin-left: 44px;
   display:flex;
@@ -102,6 +149,9 @@
   gap: 4px;
   font-size: 13px;
 }
+.fp-result{ opacity: 0.95; }
 
-.fpResultRow{ opacity: 0.95; }
-.fpResultRow--muted{ opacity: 0.7; }
+.fp-empty{
+  margin-left: 44px;
+  opacity: 0.8;
+}

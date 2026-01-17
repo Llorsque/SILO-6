@@ -185,11 +185,12 @@ export async function mountChampions(root){
   }
 
   function dedupeTop3(rows){
-    // Dedupe per category+pos. Keep earliest date.
+    // Dedupe per category+pos. Keep NEWEST date.
+    // This ensures the overview can be sorted with the most recent results on top.
     const sorted = [...rows].sort((a,b)=>{
       const da = a.dateISO ? new Date(a.dateISO).getTime() : 0;
       const db = b.dateISO ? new Date(b.dateISO).getTime() : 0;
-      return da - db;
+      return db - da;
     });
     const seen = new Map();
     for(const r of sorted){
@@ -205,6 +206,11 @@ export async function mountChampions(root){
       return i === -1 ? 99 : i;
     };
     return [...rows].sort((a,b)=>{
+      // Primary: newest date first
+      const da = a.dateISO ? new Date(a.dateISO).getTime() : 0;
+      const db = b.dateISO ? new Date(b.dateISO).getTime() : 0;
+      if(da !== db) return db - da;
+
       const ta = orderT(a.tournament), tb = orderT(b.tournament);
       if(ta!==tb) return ta-tb;
       if((a.season||0)!==(b.season||0)) return (a.season||0)-(b.season||0);

@@ -61,8 +61,7 @@ function TypeableDropdown({ placeholder, value, options, onPick }) {
     }
     for (const o of filtered) {
       const item = el("div", { class: "fp-dd__item" }, o);
-      item.addEventListener("mousedown", (e) => {
-        e.preventDefault();
+      item.addEventListener("click", () => {
         input.value = o;
         onPick?.(o);
         setOpen(false);
@@ -71,10 +70,30 @@ function TypeableDropdown({ placeholder, value, options, onPick }) {
     }
   };
 
+  function commitIfExactMatch(){
+    const typed = norm(input.value);
+    if(!typed) return;
+    const match = options.find(o => normKey(o) === normKey(typed));
+    if(match){
+      input.value = match;
+      onPick?.(match);
+    }
+  }
+
   input.addEventListener("focus", () => setOpen(true));
   input.addEventListener("input", () => { if (!open) setOpen(true); renderList(); });
   input.addEventListener("keydown", (e) => {
     if (e.key === "Escape") setOpen(false);
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commitIfExactMatch();
+      setOpen(false);
+    }
+  });
+
+  input.addEventListener("blur", () => {
+    // If the user typed a full name and tabs away, treat it as selection.
+    commitIfExactMatch();
   });
 
   document.addEventListener("click", (e) => {
@@ -89,22 +108,28 @@ function TypeableDropdown({ placeholder, value, options, onPick }) {
 /* ------------------------- dataset adapters ------------------------- */
 
 function getSheets(dataset) {
-  const results = dataset?.results || dataset?.Results || dataset?.RESULTS || [];
-  const skaters = dataset?.skaters || dataset?.Skaters || dataset?.SKATERS || [];
-  const wtNames = dataset?.wtNames || dataset?.WTNames || dataset?.["WT Name"] || dataset?.["WT Names"] || dataset?.WT_NAME || [];
+  // In SILO v6 dev: dataset is stored normalized by core/excel.js
+  // {
+  //   results: NormalizedResultRow[]  (keys: skaterName,pos,tournament,tournamentShort,runKey,season,distance,...)
+  //   skaters: raw Skaters sheet rows
+  //   wtNames: raw WT Names sheet rows
+  //   nameMap: { [normalizedKey]: canonicalName }
+  // }
+  const results = dataset?.results || [];
+  const skaters = dataset?.skaters || [];
+  const wtNames = dataset?.wtNames || [];
   return { results, skaters, wtNames };
 }
 
 function buildSkaterCanonicalMap(skatersRows) {
+  // Keep a small helper map for robustness, but Results are already canonicalized
+  // by core/excel.js using Skaters sheet.
   const map = new Map();
   for (const r of skatersRows || []) {
-    const canonical = norm(pick(r, ["SKATERS", "Skaters", "Naam", "NAME", "Name", "D"]));
-    if (!canonical) continue;
-    const variants = [canonical, norm(pick(r, ["Naam", "NAME", "Name"]))].filter(Boolean);
-    for (const v of variants) {
-      const k = normKey(v);
-      if (k && !map.has(k)) map.set(k, canonical);
-    }
+    const canonical = norm(r.SKATERS ?? r["SKATERS"] ?? "");
+    const original = norm(r.ORIGINAL ?? r["ORIGINAL"] ?? "");
+    if (canonical) map.set(normKey(canonical), canonical);
+    if (original) map.set(normKey(original), canonical);
   }
   return map;
 }
@@ -117,10 +142,10 @@ function canonicalizeName(name, canonicalMap) {
 
 function skaterInfoByName(skatersRows, canonicalName) {
   const target = norm(canonicalName);
-  const row = (skatersRows || []).find(r => norm(pick(r, ["SKATERS","Skaters","Naam","NAME","Name","D"])) === target);
+  const row = (skatersRows || []).find(r => norm(r.SKATERS ?? r["SKATERS"] ?? "") === target);
   if (!row) return { nat:"", birthYear:null };
 
-  const nat = norm(pick(row, ["NAT","Nat.","Nat", "D", "E"]));
+  const nat = norm(row.NAT ?? row["NAT"] ?? "");
 
   const candidates = [
     pick(row, ["DOB","Dob","Geboortedatum","Birthdate","Birth date","Date of Birth","BIRTHDATE"]),
@@ -140,13 +165,12 @@ function skaterInfoByName(skatersRows, canonicalName) {
 function wtTeamByNat(wtRows, nat) {
   const code = norm(nat).toUpperCase();
   if (!code) return "";
-  const row = (wtRows || []).find(r => String(pick(r, ["NAT","Nat.","Nat","Country","A","B"])).toUpperCase() === code);
+  // WT Names sheet: typically columns NAT, COUNTRY, WT NAME (team)
+  const row = (wtRows || []).find(r => String(r.NAT ?? r["NAT"] ?? "").toUpperCase() === code);
   if (!row) {
-    const r2 = (wtRows || []).find(r => Object.values(r||{}).some(v => String(v||"").toUpperCase() === code));
-    if (!r2) return "";
-    return norm(pick(r2, ["WT Name","WT NAME","WT_NAME","Team","TEAM","C"]));
+    return "";
   }
-  return norm(pick(row, ["WT Name","WT NAME","WT_NAME","Team","TEAM","C"]));
+  return norm(row["WT NAME"] ?? row["WT NAME "] ?? row.WT_NAME ?? row["WT_NAME"] ?? row["WT NAME"] ?? "");
 }
 
 function ageFromBirthYear(birthYear) {
@@ -157,31 +181,30 @@ function ageFromBirthYear(birthYear) {
 
 /* ------------------------- tournament mapping ------------------------- */
 
-function tournamentShort(wedstrijdRaw, runRaw) {
-  const w = normKey(wedstrijdRaw);
-  const r = normKey(runRaw);
-
-  if (w.includes("world cup") || w.includes("world tour") || w.includes("worldcup") || w.includes("worldtour")) return "WC";
+function tournamentShortFromRow(r) {
+  // Prefer normalized key from import
+  const t = norm(r?.tournamentShort || "");
+  if (t) return t;
+  // Fallback
+  const w = normKey(r?.tournament || r?.wedstrijdRaw || "");
+  if (w.includes("world cup") || w.includes("world tour")) return "WC";
   if (w.includes("olymp")) return "OS";
-  if (w.includes("wereld") || w.includes("world championship") || w.includes("world championships")) return "WK";
+  if (w.includes("wereld")) return "WK";
   if (w.includes("europe") || w.includes("europ")) return "EK";
-  if (w.includes("neder") || w.includes("dutch") || w.includes("netherlands")) return "NK";
-  if (r.includes("eindklassement") || r.includes("overall")) return "WC";
-
+  if (w.includes("neder")) return "NK";
   return "";
 }
 
 const TOUR_PRIORITY = { OS: 1, WK: 2, EK: 3, WC: 4, NK: 5 };
 function tourOrder(short) { return TOUR_PRIORITY[short] ?? 99; }
 
-function runKey(runRaw) {
-  const r = normKey(runRaw);
-  if (!r) return "";
-  if (r.includes("final a")) return "final a";
-  if (r.includes("final")) return "final";
-  if (r.includes("eindklassement")) return "eindklassement";
-  if (r.includes("overall")) return "overall";
-  return r;
+function runKeyFromRow(r) {
+  const k = normKey(r?.runKey || r?.runRaw || r?.run || "");
+  if (!k) return "";
+  if (k.includes("final a")) return "final a";
+  if (k === "final" || k.includes("final")) return "final";
+  if (k.includes("eind") || k.includes("overall")) return "eindklassement";
+  return k;
 }
 
 function medalEmoji(pos) {
@@ -193,41 +216,39 @@ function medalEmoji(pos) {
 
 /* ------------------------- results selection logic ------------------------- */
 
-function computeTopResults(resultsRows, canonicalName, canonicalMap) {
-  const rows = (resultsRows || []).map(r => {
-    const rawName = pick(r, ["Naam","NAME","Name","C"]);
-    const name = canonicalizeName(rawName, canonicalMap);
-
-    const pos = asInt(pick(r, ["Pos.","Pos", "Ranking", "B"]));
-    const wedstrijd = pick(r, ["Wedstrijd", "F"]);
-    const seizoen = asInt(pick(r, ["Seizoen","Season","J"]));
-    const afstand = norm(pick(r, ["Afstand","Distance","H"]));
-    const run = pick(r, ["Run", "Race", "A"]);
-    const rk = runKey(run);
-    const tShort = tournamentShort(wedstrijd, run);
-    return { name, pos, wedstrijd, seizoen, afstand, run, rk, tShort };
-  }).filter(x => x.name && x.name === canonicalName);
+function computeTopResults(resultsRows, canonicalName) {
+  const rows = (resultsRows || []).filter(r => r?.skaterName === canonicalName);
 
   const eligible = rows.filter(r => {
-    if (!(r.pos >= 1 && r.pos <= 5)) return false;
-    if (r.tShort === "WC") {
-      return (r.rk.includes("eindklassement") || r.rk.includes("overall") || normKey(r.afstand).includes("eindklassement"));
+    const pos = r.pos;
+    if (!(pos >= 1 && pos <= 5)) return false;
+    const tShort = tournamentShortFromRow(r);
+    const rk = runKeyFromRow(r);
+    if (tShort === "WC") {
+      // WC/WT: only overall/eindklassement
+      return rk === "eindklassement" || normKey(r.distance).includes("eindklassement");
     }
-    return ["OS","WK","EK","NK"].includes(r.tShort);
+    // For tournament highlights we only accept Final A/Final to avoid heats
+    if (!(rk === "final a" || rk === "final")) return false;
+    return ["OS","WK","EK","NK"].includes(tShort);
   });
 
   const gmap = new Map();
   for (const r of eligible) {
-    const key = `${r.pos}||${r.tShort}||${normKey(r.afstand)}`;
-    const g = gmap.get(key) || { pos: r.pos, tShort: r.tShort, afstand: r.afstand, years: new Set() };
-    if (Number.isFinite(r.seizoen)) g.years.add(r.seizoen);
+    const pos = r.pos;
+    const tShort = tournamentShortFromRow(r);
+    const dist = norm(r.distance || r.afstandRaw || "");
+    const season = r.season;
+    const key = `${pos}||${tShort}||${normKey(dist)}`;
+    const g = gmap.get(key) || { pos, tShort, afstand: dist, years: new Set() };
+    if (Number.isFinite(season)) g.years.add(season);
     gmap.set(key, g);
   }
 
-  let list = Array.from(gmap.values()).map(g => {
-    const years = Array.from(g.years).filter(Number.isFinite).sort((a,b)=>b-a);
-    return { ...g, years };
-  });
+  let list = Array.from(gmap.values()).map(g => ({
+    ...g,
+    years: Array.from(g.years).filter(Number.isFinite).sort((a,b)=>b-a)
+  }));
 
   list.sort((a,b)=>{
     if (a.pos !== b.pos) return a.pos - b.pos;
@@ -242,32 +263,24 @@ function computeTopResults(resultsRows, canonicalName, canonicalMap) {
   return list.slice(0, 5);
 }
 
-function computeTitleCounts(resultsRows, canonicalName, canonicalMap) {
-  const rows = (resultsRows || []).map(r => {
-    const rawName = pick(r, ["Naam","NAME","Name","C"]);
-    const name = canonicalizeName(rawName, canonicalMap);
-    const pos = asInt(pick(r, ["Pos.","Pos", "Ranking", "B"]));
-    const wedstrijd = pick(r, ["Wedstrijd", "F"]);
-    const seizoen = asInt(pick(r, ["Seizoen","Season","J"]));
-    const afstand = norm(pick(r, ["Afstand","Distance","H"]));
-    const run = pick(r, ["Run", "Race", "A"]);
-    const rk = runKey(run);
-    const tShort = tournamentShort(wedstrijd, run);
-    return { name, pos, seizoen, afstand, rk, tShort };
-  }).filter(x => x.name && x.name === canonicalName);
+function computeTitleCounts(resultsRows, canonicalName) {
+  const rows = (resultsRows || []).filter(r => r?.skaterName === canonicalName);
 
   const counts = { OS:0, WK:0, EK:0, NK:0 };
   const seen = new Set();
 
   for (const r of rows) {
     if (r.pos !== 1) continue;
-    if (!["OS","WK","EK","NK"].includes(r.tShort)) continue;
-    if (!(r.rk === "final a" || r.rk === "final")) continue;
-
-    const key = `${r.tShort}||${r.seizoen}||${normKey(r.afstand)}`;
+    const tShort = tournamentShortFromRow(r);
+    if (!["OS","WK","EK","NK"].includes(tShort)) continue;
+    const rk = runKeyFromRow(r);
+    if (!(rk === "final a" || rk === "final")) continue;
+    const dist = norm(r.distance || r.afstandRaw || "");
+    const season = r.season;
+    const key = `${tShort}||${season}||${normKey(dist)}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    counts[r.tShort]++;
+    counts[tShort]++;
   }
 
   return counts;
@@ -275,7 +288,7 @@ function computeTitleCounts(resultsRows, canonicalName, canonicalMap) {
 
 /* ------------------------- UI: rider card ------------------------- */
 
-function RiderCard({ slotIndex, name, skatersRows, wtRows, resultsRows, canonicalMap }) {
+function RiderCard({ slotIndex, name, skatersRows, wtRows, resultsRows }) {
   const badge = el("div", { class: "fp-badge" }, String(slotIndex + 1));
 
   if (!name) {
@@ -289,8 +302,8 @@ function RiderCard({ slotIndex, name, skatersRows, wtRows, resultsRows, canonica
   const team = wtTeamByNat(wtRows, nat);
   const age = ageFromBirthYear(birthYear);
 
-  const top = computeTopResults(resultsRows, name, canonicalMap);
-  const titles = computeTitleCounts(resultsRows, name, canonicalMap);
+  const top = computeTopResults(resultsRows, name);
+  const titles = computeTitleCounts(resultsRows, name);
 
   const lines = top.map(t => {
     const years = t.years?.length ? t.years.join(", ") : "—";
@@ -345,7 +358,9 @@ export async function mountFinalPresentation(root) {
       .filter(Boolean)
   )).sort((a,b)=>a.localeCompare(b));
 
-  const canonicalMap = buildSkaterCanonicalMap(skaters);
+  // Results are already mapped to canonical names via dataset.nameMap, but we keep
+  // this for extra robustness when looking up Skaters rows.
+  buildSkaterCanonicalMap(skaters);
 
   const slots = Array(8).fill("");
   let windowStart = 0;
@@ -396,8 +411,8 @@ export async function mountFinalPresentation(root) {
     );
 
     const grid = el("div", { class: "fp-grid" },
-      RiderCard({ slotIndex: leftIdx, name: slots[leftIdx], skatersRows: skaters, wtRows: wtNames, resultsRows: results, canonicalMap }),
-      RiderCard({ slotIndex: rightIdx, name: slots[rightIdx], skatersRows: skaters, wtRows: wtNames, resultsRows: results, canonicalMap }),
+      RiderCard({ slotIndex: leftIdx, name: slots[leftIdx], skatersRows: skaters, wtRows: wtNames, resultsRows: results }),
+      RiderCard({ slotIndex: rightIdx, name: slots[rightIdx], skatersRows: skaters, wtRows: wtNames, resultsRows: results }),
     );
 
     display.appendChild(bar);

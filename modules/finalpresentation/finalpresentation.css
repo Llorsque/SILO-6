@@ -1,21 +1,21 @@
 
 /* SILO — A Final presentation (scoped). Only used by this module. */
 
-.fp-selectors{
+.mod--finalpresentation .fp-selectors{
   display:grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
 
 @media (max-width: 900px){
-  .fp-selectors{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mod--finalpresentation .fp-selectors{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-.fp-selectors__cell{ position:relative; }
+.mod--finalpresentation .fp-selectors__cell{ position:relative; }
 
 /* dropdown */
-.fp-dd{ position:relative; width:100%; }
-.fp-input{
+.mod--finalpresentation .fp-dd{ position:relative; width:100%; }
+.mod--finalpresentation .fp-input{
   width:100%;
   height:36px;
   padding: 0 12px;
@@ -24,13 +24,13 @@
   background: rgba(255,255,255,0.04);
   color: inherit;
 }
-.fp-input:focus{
+.mod--finalpresentation .fp-input:focus{
   outline: none;
   border-color: rgba(82,232,232,0.55);
   box-shadow: 0 0 0 3px rgba(82,232,232,0.12);
 }
 
-.fp-dd__list{
+.mod--finalpresentation .fp-dd__list{
   display:none;
   position:absolute;
   z-index: 50;
@@ -45,46 +45,46 @@
   box-shadow: 0 12px 30px rgba(0,0,0,0.35);
 }
 
-.fp-dd__item{
+.mod--finalpresentation .fp-dd__item{
   padding: 10px 12px;
   cursor: pointer;
   user-select: none;
   font-size: 14px;
 }
-.fp-dd__item:hover{ background: rgba(82,232,232,0.10); }
-.fp-dd__item--muted{ opacity: 0.7; cursor: default; }
+.mod--finalpresentation .fp-dd__item:hover{ background: rgba(82,232,232,0.10); }
+.mod--finalpresentation .fp-dd__item--muted{ opacity: 0.7; cursor: default; }
 
 /* display area */
-.fp-display{
+.mod--finalpresentation .fp-display{
   display:flex;
   flex-direction:column;
   gap: 10px;
 }
 
-.fp-bar{
+.mod--finalpresentation .fp-bar{
   display:flex;
   align-items:center;
   justify-content:center;
   gap: 12px;
 }
 
-.fp-bar__label{
+.mod--finalpresentation .fp-bar__label{
   font-weight: 700;
   opacity: 0.95;
 }
 
-.fp-grid{
+.mod--finalpresentation .fp-grid{
   display:grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
 }
 
 @media (max-width: 900px){
-  .fp-grid{ grid-template-columns: 1fr; }
+  .mod--finalpresentation .fp-grid{ grid-template-columns: 1fr; }
 }
 
 /* rider card */
-.fp-card{
+.mod--finalpresentation .fp-card{
   position:relative;
   border: 1px solid rgba(255,255,255,0.10);
   background: rgba(255,255,255,0.03);
@@ -93,14 +93,14 @@
   min-height: 260px;
 }
 
-.fp-card--empty{
+.mod--finalpresentation .fp-card--empty{
   display:flex;
   flex-direction:column;
   justify-content:center;
   align-items:flex-start;
 }
 
-.fp-badge{
+.mod--finalpresentation .fp-badge{
   position:absolute;
   top: 12px;
   left: 12px;
@@ -115,21 +115,21 @@
   font-weight: 800;
 }
 
-.fp-name{
+.mod--finalpresentation .fp-name{
   margin-left: 44px;
   font-size: 20px;
   font-weight: 900;
   letter-spacing: 0.01em;
 }
 
-.fp-meta{
+.mod--finalpresentation .fp-meta{
   margin-left: 44px;
   font-size: 13px;
   opacity: 0.9;
   line-height: 1.35;
 }
 
-.fp-titles{
+.mod--finalpresentation .fp-titles{
   margin-top: 10px;
   margin-left: 44px;
   display:grid;
@@ -139,9 +139,9 @@
   opacity: 0.95;
 }
 
-.fp-title{ white-space: nowrap; }
+.mod--finalpresentation .fp-title{ white-space: nowrap; }
 
-.fp-results{
+.mod--finalpresentation .fp-results{
   margin-top: 10px;
   margin-left: 44px;
   display:flex;
@@ -149,9 +149,9 @@
   gap: 4px;
   font-size: 13px;
 }
-.fp-result{ opacity: 0.95; }
+.mod--finalpresentation .fp-result{ opacity: 0.95; }
 
-.fp-empty{
+.mod--finalpresentation .fp-empty{
   margin-left: 44px;
   opacity: 0.8;
 }

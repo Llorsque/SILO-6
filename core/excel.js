@@ -43,10 +43,13 @@ function formatDistance(raw){
   const s = normalizeSpaces(raw).toLowerCase();
   if(!s) return "";
   if(s.includes("overall") || s.includes("eindklassement")) return "Eindklassement";
-  if(s.includes("500")) return "500m";
-  if(s.includes("1000")) return "1000m";
-  if(s.includes("1500")) return "1500m";
-  if(s.includes("3000")) return "3000m";
+  // Be strict & avoid false positives (e.g. 1500 contains 500)
+  // We strip non-digits so values like "1.500 meter" or "1 500m" normalize correctly.
+  const digits = s.replace(/[^\d]/g, "");
+  if(digits.includes("3000")) return "3000m";
+  if(digits.includes("1500")) return "1500m";
+  if(digits.includes("1000")) return "1000m";
+  if(digits.includes("500")) return "500m";
   return normalizeSpaces(raw);
 }
 

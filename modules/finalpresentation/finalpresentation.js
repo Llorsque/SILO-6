@@ -180,6 +180,8 @@ function groupTopResults(rows){
   const byKey = new Map();
   for(const r of rows){
     if(!eligibleRow(r)) continue;
+    // In this module we only list #1 highlights under 'Belangrijkste resultaten'.
+    if(r.pos !== 1) continue;
     const key = `${r.pos}__${r.tournamentShort}__${r.distance}`;
     if(!byKey.has(key)){
       byKey.set(key, {
@@ -217,23 +219,37 @@ function groupTopResults(rows){
   });
 }
 
-function computeTitles(rows){
-  // Only pos=1, tournaments OS/WK/EK/NK, dedupe per tournament+season+distance.
-  const counts = { OS:0, WK:0, EK:0, NK:0 };
+function computePodiumCounts(rows){
+  // Podium summary per tournament: count pos 1/2/3.
+  // Dedupe per tournament+season+distance+pos (ignore date duplicates).
+  const counts = {
+    OS: { g:0, s:0, b:0 },
+    WK: { g:0, s:0, b:0 },
+    EK: { g:0, s:0, b:0 },
+    NK: { g:0, s:0, b:0 },
+  };
   const seen = new Set();
+
   for(const r of rows){
-    if(r?.pos !== 1) continue;
+    const pos = Number(r?.pos);
+    if(!(pos === 1 || pos === 2 || pos === 3)) continue;
     const t = r?.tournamentShort;
     if(!(t === "OS" || t === "WK" || t === "EK" || t === "NK")) continue;
+
     // Avoid heats/series: only finals or overall
     const rk = String(r?.runKey || "");
     if(!(rk === "final a" || rk === "final" || rk === "eindklassement")) continue;
+
     const season = Number.isFinite(r?.season) ? r.season : "";
-    const key = `${t}__${season}__${r.distance}`;
+    const key = `${t}__${season}__${r.distance}__${pos}`;
     if(seen.has(key)) continue;
     seen.add(key);
-    counts[t] += 1;
+
+    if(pos === 1) counts[t].g += 1;
+    else if(pos === 2) counts[t].s += 1;
+    else if(pos === 3) counts[t].b += 1;
   }
+
   return counts;
 }
 
@@ -401,7 +417,7 @@ export async function mountFinalPresentation(root){
     resultsBox.appendChild(el("div", { class:"fp-section-title" }, "Belangrijkste resultaten"));
 
     if(!topResults.length){
-      resultsBox.appendChild(el("div", { class:"fp-muted" }, "Geen resultaten (pos 1–5) gevonden binnen OS/WK/EK/NK en Eindklassement WC/WT."));
+      resultsBox.appendChild(el("div", { class:"fp-muted" }, "Geen resultaten (positie 1) gevonden binnen OS/WK/EK/NK en Eindklassement WC/WT."));
     }else{
       const ul = el("ul", { class:"fp-list" });
       for(const r of topResults){
@@ -413,15 +429,15 @@ export async function mountFinalPresentation(root){
       resultsBox.appendChild(ul);
     }
 
-    // Titles summary (pos=1)
-    const titles = computeTitles(riderRows);
+    // Podium summary (pos 1-3)
+    const podium = computePodiumCounts(riderRows);
     const titlesBox = el("div", { class:"fp-titles" });
-    titlesBox.appendChild(el("div", { class:"fp-section-title" }, "Titels (positie 1)"));
+    titlesBox.appendChild(el("div", { class:"fp-section-title" }, "Podium (pos 1-3)"));
     titlesBox.appendChild(el("div", { class:"fp-titles-grid" }, [
-      el("div", { class:"fp-titleItem" }, `OS - ${titles.OS}`),
-      el("div", { class:"fp-titleItem" }, `WK - ${titles.WK}`),
-      el("div", { class:"fp-titleItem" }, `EK - ${titles.EK}`),
-      el("div", { class:"fp-titleItem" }, `NK - ${titles.NK}`),
+      el("div", { class:"fp-titleItem" }, `OS - ${podium.OS.g} - ${podium.OS.s} - ${podium.OS.b}`),
+      el("div", { class:"fp-titleItem" }, `WK - ${podium.WK.g} - ${podium.WK.s} - ${podium.WK.b}`),
+      el("div", { class:"fp-titleItem" }, `EK - ${podium.EK.g} - ${podium.EK.s} - ${podium.EK.b}`),
+      el("div", { class:"fp-titleItem" }, `NK - ${podium.NK.g} - ${podium.NK.s} - ${podium.NK.b}`),
     ]));
 
     body.appendChild(el("div", { class:"hr" }));

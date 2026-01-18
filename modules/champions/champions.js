@@ -123,7 +123,8 @@ export async function mountChampions(root){
     distances: new Set(),    // multi
     sexes: new Set(),        // multi (man/vrouw)
     medals: new Set(),       // multi (1/2/3)
-    rider: ""                // single
+    rider: "",               // single
+    nat: ""                  // single (land)
   };
 
   // Build base years list from dataset seasons
@@ -163,6 +164,11 @@ export async function mountChampions(root){
       if(state.sexes.size && !state.sexes.has(r.sex)) return false;
       if(state.medals.size && !state.medals.has(r.pos)) return false;
       if(state.rider && r.skaterName !== state.rider) return false;
+      if(state.nat){
+        const a = String(r.nat||"").trim().toUpperCase();
+        const b = String(state.nat||"").trim().toUpperCase();
+        if(!a || a !== b) return false;
+      }
 
       // champions: top 3 only
       if(!(r.pos === 1 || r.pos === 2 || r.pos === 3)) return false;
@@ -185,12 +191,11 @@ export async function mountChampions(root){
   }
 
   function dedupeTop3(rows){
-    // Dedupe per category+pos. Keep NEWEST date.
-    // This ensures the overview can be sorted with the most recent results on top.
+    // Dedupe per category+pos. Keep earliest date.
     const sorted = [...rows].sort((a,b)=>{
       const da = a.dateISO ? new Date(a.dateISO).getTime() : 0;
       const db = b.dateISO ? new Date(b.dateISO).getTime() : 0;
-      return db - da;
+      return da - db;
     });
     const seen = new Map();
     for(const r of sorted){
@@ -206,11 +211,6 @@ export async function mountChampions(root){
       return i === -1 ? 99 : i;
     };
     return [...rows].sort((a,b)=>{
-      // Primary: newest date first
-      const da = a.dateISO ? new Date(a.dateISO).getTime() : 0;
-      const db = b.dateISO ? new Date(b.dateISO).getTime() : 0;
-      if(da !== db) return db - da;
-
       const ta = orderT(a.tournament), tb = orderT(b.tournament);
       if(ta!==tb) return ta-tb;
       if((a.season||0)!==(b.season||0)) return (a.season||0)-(b.season||0);
@@ -238,6 +238,7 @@ export async function mountChampions(root){
     state.sexes.clear();
     state.medals.clear();
     state.rider = "";
+    state.nat = "";
     render();
   });
 
@@ -268,6 +269,10 @@ export async function mountChampions(root){
     const distances = allDistancesForSelection(baseRows);
 
     const riders = Array.from(new Set(baseRows.map(r => r.skaterName).filter(Boolean))).sort((a,b)=>a.localeCompare(b));
+    const natOptions = Array.from(new Set(baseRows.map(r => r.nat).filter(Boolean)))
+      .map(v => String(v).trim())
+      .filter(Boolean)
+      .sort((a,b)=>a.localeCompare(b));
 
     // Filters layout
     const row1 = el("div", { class:"filtersRow" }, [
@@ -329,6 +334,19 @@ export async function mountChampions(root){
           });
           return dd.wrap;
         })()
+      ]),
+      el("div", { class:"divider" }),
+      el("div", { class:"filterGroup", style:"min-width:180px" }, [
+        el("div", { class:"filterLabel" }, "Land"),
+        (() => {
+          const dd = typeableDropdown({
+            placeholder: "Alle landen",
+            value: state.nat || "",
+            options: ["", ...natOptions],
+            onChange: (val)=>{ state.nat = val === "" ? "" : val; render(); }
+          });
+          return dd.wrap;
+        })()
       ])
     ]);
 
@@ -348,17 +366,18 @@ export async function mountChampions(root){
     const sSel = state.sexes.size ? Array.from(state.sexes).join(" & ") : "alle";
     const mSel = state.medals.size ? Array.from(state.medals).sort((a,b)=>a-b).map(p=>p===1?"goud":p===2?"zilver":"brons").join(", ") : "alle medailles";
     const rSel = state.rider ? `• ${state.rider}` : "";
-    summary.textContent = `${tSel.join(" / ")} • ${ySel} • ${dSel} • ${sSel} • ${mSel}${rSel}`;
+    const nSel = state.nat ? `• ${state.nat}` : "";
+    summary.textContent = `${tSel.join(" / ")} • ${ySel} • ${dSel} • ${sSel} • ${mSel}${rSel}${nSel}`;
 
 
-    // Medal summary cards (only when a specific rider is selected)
-    if(state.rider){
-      const tournamentsToShow = state.tournaments.size ? Array.from(state.tournaments) : [];
-      if(!tournamentsToShow.length){
-        medalSummaryWrap.appendChild(el("div", { class:"notice" }, "Selecteer ook een wedstrijd om het medaille-overzicht te zien."));
-      }else{
-        // Count medals for this rider within current selection, per tournament
-        // Use deduped rows (unique medal per category+pos)
+    // Medal summary cards (when a specific rider OR land is selected)
+    if(state.rider || state.nat){
+      // Show only tournaments that actually exist in the filtered result set
+      const presentT = new Set(rows.map(r=>r.tournament));
+      const tournamentsToShow = (state.tournaments.size ? Array.from(state.tournaments) : tournamentOptions)
+        .filter(t=>presentT.has(t));
+
+      if(tournamentsToShow.length){
         const byT = new Map();
         for(const r of rows){
           if(!tournamentsToShow.includes(r.tournament)) continue;
@@ -381,6 +400,8 @@ export async function mountChampions(root){
             el("div", { class:"medalCard__sub" }, `${c.total} medailles`)
           ]));
         }
+      } else {
+        medalSummaryWrap.appendChild(el("div", { class:"notice" }, "Geen medailles met deze selectie."));
       }
     }
 

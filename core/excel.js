@@ -73,6 +73,12 @@ function tournamentName(raw){
   const s = normalizeSpaces(raw);
   const low = s.toLowerCase();
   if(low.includes("olymp")) return "Olympische Spelen";
+  // IMPORTANT: distinguish senior WK vs junior WK (WKJ)
+  // Examples that should map to WKJ:
+  // - "Wereldkampioenschap Junioren"
+  // - "Junior World Championships"
+  // - "WKJ"
+  if(low.includes("wereld") && (low.includes("junior") || low.includes("wkj"))) return "Wereldkampioenschap Junioren";
   if(low.includes("wereld")) return "Wereldkampioenschap";
   if(low.includes("europe")) return "Europees kampioenschap";
   if(low.includes("neder")) return "Nederlands kampioenschap";
@@ -84,6 +90,8 @@ function tournamentName(raw){
 function tournamentShort(name){
   const low = String(name||"").toLowerCase();
   if(low.includes("olymp")) return "OS";
+  // IMPORTANT: distinguish senior WK vs junior WK (WKJ)
+  if(low.includes("wereld") && (low.includes("junior") || low.includes("wkj"))) return "WKJ";
   if(low.includes("wereld")) return "WK";
   if(low.includes("europe")) return "EK";
   if(low.includes("neder")) return "NK";

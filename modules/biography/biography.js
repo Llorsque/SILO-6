@@ -31,6 +31,8 @@ function fmtDate(iso){
 function tournamentShort(name){
   const low = String(name||"").toLowerCase();
   if(low.includes("olymp")) return "OS";
+  // IMPORTANT: distinguish senior WK vs junior WK (WKJ)
+  if(low.includes("wereld") && (low.includes("junior") || low.includes("wkj"))) return "WKJ";
   if(low.includes("wereld")) return "WK";
   if(low.includes("europe")) return "EK";
   if(low.includes("neder")) return "NK";

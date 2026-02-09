@@ -3,56 +3,6 @@ import { sectionCard } from "../../core/layout.js";
 import { router } from "../../core/router.js";
 import { loadDataset, loadMeta } from "../../core/storage.js";
 
-
-function formatEventLine(info){
-  const dist = info.distance || "—";
-  const tour = info.tournamentShort || "—";
-  const loc = info.location || "—";
-  const year = info.season || "—";
-  return `${dist}, ${tour}, ${loc}, ${year}`;
-}
-
-function openModal(root, title, lines){
-  // Remove existing modal if any
-  const existing = root.querySelector(".h2hModalOverlay");
-  if(existing) existing.remove();
-
-  const overlay = el("div", { class:"h2hModalOverlay", role:"dialog", "aria-modal":"true" });
-  const box = el("div", { class:"h2hModal" });
-
-  const head = el("div", { class:"h2hModal__head" }, [
-    el("div", { class:"h2hModal__title" }, title),
-    el("button", { class:"btn btn--sm", type:"button" }, "Sluiten")
-  ]);
-
-  const body = el("div", { class:"h2hModal__body" });
-  if(!lines || !lines.length){
-    body.appendChild(el("div", { class:"muted" }, "Geen uitslagen gevonden binnen deze selectie."));
-  }else{
-    const ul = el("ul", { class:"h2hModal__list" });
-    for(const ln of lines){
-      ul.appendChild(el("li", {}, ln));
-    }
-    body.appendChild(ul);
-  }
-
-  box.appendChild(head);
-  box.appendChild(body);
-  overlay.appendChild(box);
-
-  function close(){
-    overlay.remove();
-    document.removeEventListener("keydown", onKey);
-  }
-  head.querySelector("button").addEventListener("click", close);
-  overlay.addEventListener("click", (e)=>{ if(e.target === overlay) close(); });
-
-  function onKey(e){ if(e.key === "Escape") close(); }
-  document.addEventListener("keydown", onKey);
-
-  root.appendChild(overlay);
-}
-
 /**
  * Head-to-Head
  * - Compare 2–6 riders using the same filters
@@ -287,85 +237,55 @@ function computeMetrics(filteredRows, riders){
     };
   }
 
-// shared results and wins matrix (+ store event meta for drill-down)
-const events = new Map();      // eventKey -> Map(rider->pos)
-const eventInfo = new Map();   // eventKey -> { distance, tournamentShort, location, season, date, run }
-
-for(const r of filteredRows){
-  if(!riders.includes(r.skaterName)) continue;
-  const key = buildEventKey(r);
-  if(!events.has(key)) events.set(key, new Map());
-  const mp = events.get(key);
-
-  const p = Number(r.pos);
-  if(!p) continue;
-
-  const prev = mp.get(r.skaterName);
-  // keep best (min pos) if duplicates exist
-  if(prev == null || p < prev) mp.set(r.skaterName, p);
-
-  if(!eventInfo.has(key)){
-    eventInfo.set(key, {
-      distance: r.distance || "—",
-      tournamentShort: r.tournamentShort || "—",
-      location: r.location || "—",
-      season: r.season || "—",
-      date: r.date || "",
-      run: r.run || ""
-    });
+  // shared results and wins matrix
+  const events = new Map(); // eventKey -> Map(rider->pos)
+  for(const r of filteredRows){
+    if(!riders.includes(r.skaterName)) continue;
+    const key = buildEventKey(r);
+    if(!events.has(key)) events.set(key, new Map());
+    const mp = events.get(key);
+    const p = Number(r.pos);
+    if(!p) return;
+    const prev = mp.get(r.skaterName);
+    // keep best (min pos) if duplicates exist
+    if(prev == null || p < prev) mp.set(r.skaterName, p);
   }
-}
 
-// pairwise stats
-const pair = {};
-const pairDetails = {}; // a||b -> { shared:[], aWins:[], bWins:[], ties:[] } (shared events with meta)
-
-for(let i=0;i<riders.length;i++){
-  for(let j=0;j<riders.length;j++){
-    if(i===j) continue;
-    const a=riders[i], b=riders[j];
-    pair[`${a}||${b}`] = { shared:0, aAhead:0, bAhead:0, ties:0 };
-    pairDetails[`${a}||${b}`] = { shared:[], aWins:[], bWins:[], ties:[] };
-  }
-}
-
-for(const [key, mp] of events.entries()){
-  const info = eventInfo.get(key) || {};
+  // pairwise stats
+  const pair = {};
   for(let i=0;i<riders.length;i++){
-    for(let j=i+1;j<riders.length;j++){
+    for(let j=0;j<riders.length;j++){
+      if(i===j) continue;
       const a=riders[i], b=riders[j];
-      if(!mp.has(a) || !mp.has(b)) continue;
-      const pa=mp.get(a), pb=mp.get(b);
+      pair[`${a}||${b}`] = { shared:0, aAhead:0, bAhead:0, ties:0 };
+    }
+  }
 
-      const recAB = { ...info, aPos: pa, bPos: pb, aName: a, bName: b };
-      const recBA = { ...info, aPos: pb, bPos: pa, aName: b, bName: a };
+  for(const mp of events.values()){
+    for(let i=0;i<riders.length;i++){
+      for(let j=i+1;j<riders.length;j++){
+        const a=riders[i], b=riders[j];
+        if(!mp.has(a) || !mp.has(b)) continue;
+        const pa=mp.get(a), pb=mp.get(b);
 
-      pair[`${a}||${b}`].shared++;
-      pair[`${b}||${a}`].shared++;
-      pairDetails[`${a}||${b}`].shared.push(recAB);
-      pairDetails[`${b}||${a}`].shared.push(recBA);
+        pair[`${a}||${b}`].shared++;
+        pair[`${b}||${a}`].shared++;
 
-      if(pa < pb){
-        pair[`${a}||${b}`].aAhead++;
-        pair[`${b}||${a}`].bAhead++;
-        pairDetails[`${a}||${b}`].aWins.push(recAB);
-        pairDetails[`${b}||${a}`].bWins.push(recBA);
-      }else if(pb < pa){
-        pair[`${a}||${b}`].bAhead++;
-        pair[`${b}||${a}`].aAhead++;
-        pairDetails[`${a}||${b}`].bWins.push(recAB);
-        pairDetails[`${b}||${a}`].aWins.push(recBA);
-      }else{
-        pair[`${a}||${b}`].ties++;
-        pair[`${b}||${a}`].ties++;
-        pairDetails[`${a}||${b}`].ties.push(recAB);
-        pairDetails[`${b}||${a}`].ties.push(recBA);
+        if(pa < pb){
+          pair[`${a}||${b}`].aAhead++;
+          pair[`${b}||${a}`].bAhead++;
+        }else if(pb < pa){
+          pair[`${a}||${b}`].bAhead++;
+          pair[`${b}||${a}`].aAhead++;
+        }else{
+          pair[`${a}||${b}`].ties++;
+          pair[`${b}||${a}`].ties++;
+        }
       }
     }
   }
-}
 
-  return { byRider, podium, bestPos, participation, pair, pairDetails };
+  return { byRider, podium, bestPos, participation, pair };
 }
 
 function riderCard(name, meta, metrics){
@@ -388,70 +308,18 @@ function riderCard(name, meta, metrics){
   return el("div", { class:"hcard" }, lines);
 }
 
-function compareMiddle(root, a, b, metrics, filters){
-  const key = `${a}||${b}`;
-  const s = metrics.pair[key] || { shared:0, aAhead:0, bAhead:0, ties:0 };
-  const details = metrics.pairDetails?.[key] || { shared:[], aWins:[], bWins:[], ties:[] };
-
-  const filterSummary = [
-    `Toernooi: ${(filters.tournaments && filters.tournaments.length) ? filters.tournaments.join(", ") : "alles"}`,
-    `Afstand: ${(filters.distances && filters.distances.length) ? filters.distances.join(", ") : "alles"}`,
-    `Seizoen: ${(filters.seasons && filters.seasons.length) ? filters.seasons.join(", ") : "alles"}`
-  ].join(" • ");
-
-  function showShared(){
-    const lines = details.shared
-      .slice()
-      .sort((x,y)=> (Number(y.season)||0) - (Number(x.season)||0) || String(y.date||"").localeCompare(String(x.date||"")))
-      .map(d => `${formatEventLine(d)} (pos ${d.aPos} vs ${d.bPos})`);
-    openModal(root, `Samen in uitslag (${s.shared})`, [filterSummary, ...lines]);
-  }
-  function showWinsA(){
-    const lines = details.aWins
-      .slice()
-      .sort((x,y)=> (Number(y.season)||0) - (Number(x.season)||0) || String(y.date||"").localeCompare(String(x.date||"")))
-      .map(d => `${formatEventLine(d)} (pos ${d.aPos} vs ${d.bPos})`);
-    openModal(root, `Winst ${a.split(" ")[0]} (${s.aAhead})`, [filterSummary, ...lines]);
-  }
-  function showWinsB(){
-    const lines = details.bWins
-      .slice()
-      .sort((x,y)=> (Number(y.season)||0) - (Number(x.season)||0) || String(y.date||"").localeCompare(String(x.date||"")))
-      .map(d => `${formatEventLine(d)} (pos ${d.aPos} vs ${d.bPos})`);
-    openModal(root, `Winst ${b.split(" ")[0]} (${s.bAhead})`, [filterSummary, ...lines]);
-  }
-  function showExplain(){
-    openModal(root, "Vergelijk — waarop gebaseerd?", [
-      filterSummary,
-      "Samen in uitslag = aantal gedeelde uitslagen (zelfde wedstrijd + datum + afstand + run).",
-      "Winst = vaker een betere positie (lager pos-getal) binnen dezelfde gedeelde uitslag."
-    ]);
-  }
-
-  const btn = (label, count, onClick) => {
-    const isActive = Number(count) > 0;
-    const cls = "pill pill--wide pill--click" + (isActive ? "" : " pill--disabled");
-    const node = el("button", { class: cls, type:"button", disabled: !isActive }, label);
-    if(isActive) node.addEventListener("click", onClick);
-    return node;
-  };
-
-  const titleBtn = el("button", { class:"hmid__titleBtn", type:"button" }, "Vergelijk");
-  titleBtn.addEventListener("click", showExplain);
-
+function compareMiddle(a, b, metrics){
+  const s = metrics.pair[`${a}||${b}`] || { shared:0, aAhead:0, bAhead:0, ties:0 };
   return el("div", { class:"hmid" }, [
-    el("div", { class:"hmid__titleRow" }, [
-      el("div", { class:"hmid__title" }, "Vergelijking"),
-      titleBtn
-    ]),
+    el("div", { class:"hmid__title" }, "Vergelijking"),
     el("div", { class:"hmid__row" }, [
-      btn(`Samen in uitslag: ${s.shared}`, s.shared, showShared),
-      btn(`Winst ${a.split(" ")[0]}: ${s.aAhead}`, s.aAhead, showWinsA),
-      btn(`Winst ${b.split(" ")[0]}: ${s.bAhead}`, s.bAhead, showWinsB),
+      el("div", { class:"pill pill--wide" }, `Samen in uitslag: ${s.shared}`),
+      el("div", { class:"pill pill--wide" }, `Winst ${a.split(" ")[0]}: ${s.aAhead}`),
+      el("div", { class:"pill pill--wide" }, `Winst ${b.split(" ")[0]}: ${s.bAhead}`),
       el("div", { class:"pill pill--wide" }, `Gelijk: ${s.ties}`)
     ]),
     el("div", { class:"muted", style:"margin-top:10px" },
-      "Tip: klik op ‘Vergelijk’ of op een metric om te zien op welke uitslagen dit gebaseerd is."
+      "‘Winst’ = vaker een betere positie (lager pos-getal) binnen dezelfde uitslag."
     )
   ]);
 }
@@ -517,6 +385,7 @@ export async function mountHeadToHead(root){
   const tournaments = [
     { key:"OS", label:"OS" },
     { key:"WK", label:"WK" },
+    { key:"WKJ", label:"WKJ" },
     { key:"EK", label:"EK" },
     { key:"WC", label:"WC/WT" },
     { key:"NK", label:"NK" }
@@ -530,7 +399,7 @@ export async function mountHeadToHead(root){
   // State
   let riderCount = 2;
   const selectedRiders = Array(6).fill("");
-  const tSet = new Set(["OS","WK","EK","WC","NK"]); // default all on
+  const tSet = new Set(["OS","WK","WKJ","EK","WC","NK"]); // default all on
   const dSet = new Set(["500m","1000m","1500m"]); // default all on
   const ySet = new Set(); // empty = all
   const cleanupFns = [];
@@ -569,7 +438,7 @@ export async function mountHeadToHead(root){
       const a = chosen[0], b = chosen[1];
       resultsWrap.appendChild(el("div", { class:"h2hGrid" }, [
         riderCard(a, meta, metrics),
-        compareMiddle(root, a, b, metrics, filters),
+        compareMiddle(a, b, metrics),
         riderCard(b, meta, metrics),
       ]));
     }else{

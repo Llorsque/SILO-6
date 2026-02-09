@@ -1,6 +1,38 @@
 /* filters.css
    Scoped styles for module "filters".
    IMPORTANT: Always prefix with .mod--filters to avoid affecting other modules.
-   Example:
-     .mod--filters .myClass { ... }
 */
+
+.mod--filters .wt-header{
+  display:grid;
+  grid-template-columns: 1fr 320px;
+  gap:16px;
+  align-items:start;
+}
+
+.mod--filters .wt-right{
+  display:flex;
+  flex-direction:column;
+}
+
+.mod--filters .wt-tableWrap{
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:8px;
+  background: rgba(0,0,0,.18);
+}
+
+.mod--filters .wt-table{
+  min-width: 720px;
+}
+
+.mod--filters .wt-table th,
+.mod--filters .wt-table td{
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+
+.mod--filters .wt-table tr:last-child td{border-bottom:none}
+
+@media(max-width: 900px){
+  .mod--filters .wt-header{grid-template-columns: 1fr;}
+}

@@ -134,7 +134,7 @@ export async function mountChampions(root){
     for(const r of rows){
       if(r?.season) years.add(r.season);
     }
-    return Array.from(years).sort((a,b)=>a-b);
+    return Array.from(years).sort((a,b)=>b-a); // Descending: newest first
   }
 
   // Build distances list (we show only the main ones + Eindklassement)
@@ -214,7 +214,8 @@ export async function mountChampions(root){
     return [...rows].sort((a,b)=>{
       const ta = orderT(a.tournament), tb = orderT(b.tournament);
       if(ta!==tb) return ta-tb;
-      if((a.season||0)!==(b.season||0)) return (a.season||0)-(b.season||0);
+      // Sort by season descending (newest first)
+      if((a.season||0)!==(b.season||0)) return (b.season||0)-(a.season||0);
       if(String(a.distance).localeCompare(String(b.distance))) return String(a.distance).localeCompare(String(b.distance));
       if(String(a.sex).localeCompare(String(b.sex))) return String(a.sex).localeCompare(String(b.sex));
       return (a.pos||99)-(b.pos||99);

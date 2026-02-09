@@ -4,3 +4,81 @@
    Example:
      .mod--dashboard .myClass { ... }
 */
+
+.mod--dashboard .pivotFilters{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap:12px;
+  align-items:end;
+  margin-bottom:12px;
+}
+
+@media (min-width: 900px){
+  .mod--dashboard .pivotFilters{ grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+.mod--dashboard .pivotFilter{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.mod--dashboard .pivotFilter__label{
+  font-size:12px;
+  opacity:0.85;
+}
+
+.mod--dashboard .pivotFilter__ctrl{
+  display:flex;
+  gap:8px;
+  align-items:stretch;
+}
+
+.mod--dashboard .pivotActions{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  justify-content:flex-start;
+}
+
+.mod--dashboard .pivotCount{
+  font-size:13px;
+  opacity:0.85;
+  margin: 6px 0 10px;
+}
+
+.mod--dashboard .pivotTableWrap{
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:12px;
+  overflow:auto;
+  -webkit-overflow-scrolling: touch;
+  background: rgba(0,0,0,0.15);
+}
+
+.mod--dashboard .pivotTable{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  min-width: 920px;
+}
+
+.mod--dashboard .pivotTable th,
+.mod--dashboard .pivotTable td{
+  padding:10px 10px;
+  border-bottom:1px solid rgba(255,255,255,0.10);
+  vertical-align:top;
+  text-align:left;
+  font-size:13px;
+  white-space:nowrap;
+}
+
+.mod--dashboard .pivotTable th{
+  position:sticky;
+  top:0;
+  background: rgba(0,0,0,0.35);
+  z-index:1;
+}
+
+.mod--dashboard .pivotTable tr:nth-child(even) td{
+  background: rgba(255,255,255,0.03);
+}

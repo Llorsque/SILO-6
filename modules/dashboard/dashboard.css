@@ -9,8 +9,8 @@
   display:grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap:12px;
-  align-items:end;
-  margin-bottom:12px;
+  align-items:start;
+  margin-bottom:14px;
 }
 
 @media (min-width: 900px){
@@ -39,12 +39,25 @@
   gap:8px;
   align-items:center;
   justify-content:flex-start;
+  grid-column: 1 / -1;
+}
+
+.mod--dashboard .pivotSummary{
+  font-size:13px;
+  color:var(--muted);
+  padding:10px 12px;
+  background: rgba(82,232,232,.06);
+  border:1px solid rgba(82,232,232,.20);
+  border-radius:12px;
+  margin-bottom:10px;
+  line-height:1.4;
 }
 
 .mod--dashboard .pivotCount{
   font-size:13px;
   opacity:0.85;
   margin: 6px 0 10px;
+  font-weight:800;
 }
 
 .mod--dashboard .pivotTableWrap{
@@ -81,4 +94,86 @@
 
 .mod--dashboard .pivotTable tr:nth-child(even) td{
   background: rgba(255,255,255,0.03);
+}
+
+/* Multi-select dropdown styles */
+.mod--dashboard .msel{
+  position:relative; 
+  display:inline-block;
+  width:100%;
+}
+
+.mod--dashboard .msel__btn{
+  width:100%;
+  text-align:left;
+  border-radius:12px;
+  transition: all 0.2s ease;
+}
+
+.mod--dashboard .msel__btn--active{
+  border-color: rgba(82,232,232,.65);
+  box-shadow: 0 0 0 2px rgba(82,232,232,.12) inset,
+              0 0 8px rgba(82,232,232,.25);
+  background: rgba(82,232,232,.10);
+}
+
+.mod--dashboard .msel__panel{
+  position:absolute;
+  top:calc(100% + 6px);
+  left:0;
+  width:100%;
+  min-width:260px;
+  max-height:320px;
+  overflow:auto;
+  border:1px solid var(--line);
+  background: rgba(10,14,24,.98);
+  border-radius:14px;
+  padding:10px;
+  display:none;
+  z-index:50;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+}
+
+.mod--dashboard .msel__panel--open{
+  display:block;
+}
+
+.mod--dashboard .msel__head{
+  display:flex; 
+  justify-content:space-between; 
+  align-items:center; 
+  gap:10px; 
+  margin-bottom:8px;
+  padding-bottom:8px;
+  border-bottom:1px solid rgba(255,255,255,.10);
+}
+
+.mod--dashboard .msel__list{
+  display:flex; 
+  flex-direction:column; 
+  gap:6px;
+}
+
+.mod--dashboard .msel__row{
+  display:flex; 
+  align-items:center; 
+  gap:10px; 
+  cursor:pointer;
+  padding:6px 8px;
+  border-radius:8px;
+  transition: background 0.15s ease;
+}
+
+.mod--dashboard .msel__row:hover{
+  background: rgba(82,232,232,.08);
+}
+
+.mod--dashboard .msel__row input{
+  transform: translateY(1px);
+  cursor:pointer;
+}
+
+.mod--dashboard .msel__row span{
+  font-weight:700;
+  font-size:13px;
 }

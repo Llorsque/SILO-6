@@ -7,51 +7,83 @@ function normalizeSpaces(s){
   return String(s ?? "").replace(/\s+/g, " ").trim();
 }
 
-function typeableDropdown({ placeholder, value, options, onChange }){
-  const wrap = el("div", { class:"dropdown" });
-  const input = el("input", { class:"input", placeholder, value: value || "" });
-  const list = el("div", { class:"dropdown__list" });
+function multiSelectDropdown({ label, options, selectedSet, onChange }){
+  const wrap = el("div", { class:"msel" });
+  const btn = el("button", { type:"button", class:"btn btn--sm msel__btn" }, label);
+  const panel = el("div", { class:"msel__panel" });
   let open = false;
 
-  function renderList(){
-    clear(list);
-    const q = (input.value || "").toLowerCase().trim();
-    const filtered = options
-      .filter(o => String(o).toLowerCase().includes(q))
-      .slice(0, 80);
-    if(!filtered.length){
-      list.appendChild(el("div", { class:"dropdown__item dropdown__item--muted" }, "Geen resultaten"));
-      return;
+  function updateLabel(){
+    const n = selectedSet.size;
+    btn.textContent = n ? `${label} (${n})` : label;
+    // Add glow effect when filters are active
+    if(n > 0){
+      btn.classList.add("msel__btn--active");
+    }else{
+      btn.classList.remove("msel__btn--active");
     }
-    for(const o of filtered){
-      const it = el("div", { class:"dropdown__item" }, String(o));
-      it.addEventListener("click", () => {
-        onChange(o);
-        open = false;
-        list.classList.remove("dropdown__list--open");
+  }
+
+  function render(){
+    clear(panel);
+    
+    const header = el("div", { class:"msel__head" }, [
+      el("div", { class:"muted" }, `Selecteer ${label.toLowerCase()}`),
+      el("button", { type:"button", class:"btn btn--sm", onclick:()=>{
+        if(selectedSet.size === options.length){
+          selectedSet.clear();
+        }else{
+          selectedSet.clear();
+          options.forEach(opt => selectedSet.add(opt));
+        }
+        updateLabel();
+        render();
+        onChange && onChange();
+      }}, selectedSet.size === options.length ? "Deselecteer alles" : "Selecteer alles")
+    ]);
+    panel.appendChild(header);
+
+    const list = el("div", { class:"msel__list" });
+    for(const opt of options){
+      const row = el("label", { class:"msel__row" });
+      const cb = el("input", { type:"checkbox" });
+      cb.checked = selectedSet.has(opt);
+      cb.addEventListener("change", ()=>{
+        if(cb.checked){
+          selectedSet.add(opt);
+        }else{
+          selectedSet.delete(opt);
+        }
+        updateLabel();
+        onChange && onChange();
       });
-      list.appendChild(it);
+      row.appendChild(cb);
+      row.appendChild(el("span", {}, String(opt)));
+      list.appendChild(row);
     }
+    panel.appendChild(list);
   }
 
   function setOpen(v){
     open = v;
     if(open){
-      renderList();
-      list.classList.add("dropdown__list--open");
+      render();
+      panel.classList.add("msel__panel--open");
     }else{
-      list.classList.remove("dropdown__list--open");
+      panel.classList.remove("msel__panel--open");
     }
   }
 
-  input.addEventListener("focus", ()=> setOpen(true));
-  input.addEventListener("input", ()=> { if(!open) setOpen(true); renderList(); });
-  input.addEventListener("keydown", (e)=>{ if(e.key === "Escape") setOpen(false); });
-  document.addEventListener("click", (e)=>{ if(!wrap.contains(e.target)) setOpen(false); });
+  btn.addEventListener("click", ()=> setOpen(!open));
 
-  wrap.appendChild(input);
-  wrap.appendChild(list);
-  return { wrap, input };
+  const onDocClick = (e)=>{ if(!wrap.contains(e.target)) setOpen(false); };
+  document.addEventListener("click", onDocClick);
+  wrap.__cleanup = () => document.removeEventListener("click", onDocClick);
+
+  wrap.appendChild(btn);
+  wrap.appendChild(panel);
+  updateLabel();
+  return wrap;
 }
 
 function safeSeason(r){
@@ -106,6 +138,16 @@ function getSeasonOptions(results){
   return Array.from(set).filter(n=>Number.isFinite(n)).sort((a,b)=>b-a); // newest first
 }
 
+function hasAnyFilters(state){
+  return state.sex.size > 0 || 
+         state.tournament.size > 0 || 
+         state.season.size > 0 || 
+         state.distance.size > 0 || 
+         state.locatie.size > 0 || 
+         state.nat.size > 0 || 
+         state.name.size > 0;
+}
+
 export async function mountDashboard(root){
   clear(root);
 
@@ -125,14 +167,15 @@ export async function mountDashboard(root){
     return;
   }
 
+  // State: multi-select Sets instead of single values
   const state = {
-    sex: "",
-    tournament: "",
-    season: "",
-    distance: "",
-    locatie: "",
-    nat: "",
-    name: ""
+    sex: new Set(),
+    tournament: new Set(),
+    season: new Set(),
+    distance: new Set(),
+    locatie: new Set(),
+    nat: new Set(),
+    name: new Set()
   };
 
   const options = {
@@ -145,34 +188,38 @@ export async function mountDashboard(root){
     name: getOptions(resultsAll, r=>r.skaterName || r.nameRaw)
   };
 
+  const cleanupFns = [];
+
   function pass(r){
-    if(state.sex){
+    // Multi-select logic: if Set is not empty, value must be in Set
+    if(state.sex.size > 0){
       const v = normalizeSpaces(r.sekseRaw || r.sex);
-      if(v !== state.sex) return false;
+      if(!state.sex.has(v)) return false;
     }
-    if(state.tournament){
+    if(state.tournament.size > 0){
       const v = normalizeSpaces(r.wedstrijdRaw || r.tournament);
-      if(v !== state.tournament) return false;
+      if(!state.tournament.has(v)) return false;
     }
-    if(state.season){
+    if(state.season.size > 0){
       const y = Number(r.season);
-      if(!Number.isFinite(y) || String(y) !== String(state.season)) return false;
+      if(!Number.isFinite(y) || !state.season.has(y)) return false;
     }
-    if(state.distance){
+    if(state.distance.size > 0){
       const v = normalizeSpaces(r.afstandRaw || r.distance);
-      if(v !== state.distance) return false;
+      if(!state.distance.has(v)) return false;
     }
-    if(state.locatie){
+    if(state.locatie.size > 0){
       const v = normalizeSpaces(r.locatie);
-      if(v !== state.locatie) return false;
+      if(!state.locatie.has(v)) return false;
     }
-    if(state.nat){
+    if(state.nat.size > 0){
       const v = normalizeSpaces(r.nat).toUpperCase();
-      if(v !== normalizeSpaces(state.nat).toUpperCase()) return false;
+      const matches = Array.from(state.nat).some(n => normalizeSpaces(n).toUpperCase() === v);
+      if(!matches) return false;
     }
-    if(state.name){
+    if(state.name.size > 0){
       const v = normalizeSpaces(r.skaterName || r.nameRaw);
-      if(v !== state.name) return false;
+      if(!state.name.has(v)) return false;
     }
     return true;
   }
@@ -180,22 +227,32 @@ export async function mountDashboard(root){
   const tableWrap = el("div", { class:"pivotTableWrap" });
   const countEl = el("div", { class:"pivotCount" }, "");
 
-  function clearBtn(onClick){
-    return el("button", { type:"button", class:"btn btn--ghost btn--sm", onclick:onClick }, "Wis");
-  }
-
-  function filterRow(label, ddWrap, clearButton){
-    return el("div", { class:"pivotFilter" },
-      el("div", { class:"pivotFilter__label" }, label),
-      el("div", { class:"pivotFilter__ctrl" }, ddWrap, clearButton)
-    );
+  function activeFiltersSummary(){
+    const parts = [];
+    if(state.sex.size) parts.push(`Sekse: ${Array.from(state.sex).join(", ")}`);
+    if(state.tournament.size) parts.push(`Wedstrijd: ${Array.from(state.tournament).join(", ")}`);
+    if(state.season.size) parts.push(`Seizoen: ${Array.from(state.season).sort((a,b)=>b-a).join(", ")}`);
+    if(state.distance.size) parts.push(`Afstand: ${Array.from(state.distance).join(", ")}`);
+    if(state.locatie.size) parts.push(`Locatie: ${Array.from(state.locatie).join(", ")}`);
+    if(state.nat.size) parts.push(`Nationaliteit: ${Array.from(state.nat).join(", ")}`);
+    if(state.name.size) parts.push(`Naam: ${Array.from(state.name).join(", ")}`);
+    return parts.length > 0 ? parts.join(" • ") : "Geen filters actief";
   }
 
   function renderTable(){
-    const rows = sortNewestFirst(resultsAll.filter(pass));
-    countEl.textContent = `${rows.length.toLocaleString("nl-NL")} resultaten (kolom A t/m L)`;
-
     clear(tableWrap);
+    
+    // Check if any filters are active
+    if(!hasAnyFilters(state)){
+      countEl.textContent = "Selecteer minimaal één filter om resultaten te zien";
+      tableWrap.appendChild(el("div", { class:"notice", style:"margin-top:12px" },
+        "Geen filters geselecteerd. Kies één of meer filters bovenaan om de draaitabel te vullen."
+      ));
+      return;
+    }
+
+    const rows = sortNewestFirst(resultsAll.filter(pass));
+    countEl.textContent = `${rows.length.toLocaleString("nl-NL")} resultaten`;
 
     const tbl = el("table", { class:"pivotTable" });
     const thead = el("thead");
@@ -242,84 +299,132 @@ export async function mountDashboard(root){
     tableWrap.appendChild(tbl);
   }
 
-  // Dropdowns
-  const ddSex = typeableDropdown({
-    placeholder:"Alle",
-    value:state.sex,
+  // Multi-select dropdowns
+  const msSex = multiSelectDropdown({
+    label: "Sekse",
     options: options.sex,
-    onChange:(v)=>{ state.sex = normalizeSpaces(v); ddSex.input.value = state.sex; renderTable(); }
+    selectedSet: state.sex,
+    onChange: renderTable
   });
-  const ddTournament = typeableDropdown({
-    placeholder:"Alle",
-    value:state.tournament,
-    options: options.tournament,
-    onChange:(v)=>{ state.tournament = normalizeSpaces(v); ddTournament.input.value = state.tournament; renderTable(); }
-  });
-  const ddSeason = typeableDropdown({
-    placeholder:"Alle",
-    value:state.season,
-    options: options.season.map(String),
-    onChange:(v)=>{ state.season = String(v); ddSeason.input.value = state.season; renderTable(); }
-  });
-  const ddDistance = typeableDropdown({
-    placeholder:"Alle",
-    value:state.distance,
-    options: options.distance,
-    onChange:(v)=>{ state.distance = normalizeSpaces(v); ddDistance.input.value = state.distance; renderTable(); }
-  });
-  const ddLocatie = typeableDropdown({
-    placeholder:"Alle",
-    value:state.locatie,
-    options: options.locatie,
-    onChange:(v)=>{ state.locatie = normalizeSpaces(v); ddLocatie.input.value = state.locatie; renderTable(); }
-  });
-  const ddNat = typeableDropdown({
-    placeholder:"Alle",
-    value:state.nat,
-    options: options.nat,
-    onChange:(v)=>{ state.nat = normalizeSpaces(v); ddNat.input.value = state.nat; renderTable(); }
-  });
-  const ddName = typeableDropdown({
-    placeholder:"Alle",
-    value:state.name,
-    options: options.name,
-    onChange:(v)=>{ state.name = normalizeSpaces(v); ddName.input.value = state.name; renderTable(); }
-  });
+  cleanupFns.push(msSex.__cleanup || (()=>{}));
 
-  const resetBtn = el("button", { class:"btn btn--sm", type:"button" }, "Reset filters");
+  const msTournament = multiSelectDropdown({
+    label: "Wedstrijd",
+    options: options.tournament,
+    selectedSet: state.tournament,
+    onChange: renderTable
+  });
+  cleanupFns.push(msTournament.__cleanup || (()=>{}));
+
+  const msSeason = multiSelectDropdown({
+    label: "Seizoen",
+    options: options.season,
+    selectedSet: state.season,
+    onChange: renderTable
+  });
+  cleanupFns.push(msSeason.__cleanup || (()=>{}));
+
+  const msDistance = multiSelectDropdown({
+    label: "Afstand",
+    options: options.distance,
+    selectedSet: state.distance,
+    onChange: renderTable
+  });
+  cleanupFns.push(msDistance.__cleanup || (()=>{}));
+
+  const msLocatie = multiSelectDropdown({
+    label: "Locatie",
+    options: options.locatie,
+    selectedSet: state.locatie,
+    onChange: renderTable
+  });
+  cleanupFns.push(msLocatie.__cleanup || (()=>{}));
+
+  const msNat = multiSelectDropdown({
+    label: "Nationaliteit",
+    options: options.nat,
+    selectedSet: state.nat,
+    onChange: renderTable
+  });
+  cleanupFns.push(msNat.__cleanup || (()=>{}));
+
+  const msName = multiSelectDropdown({
+    label: "Naam",
+    options: options.name,
+    selectedSet: state.name,
+    onChange: renderTable
+  });
+  cleanupFns.push(msName.__cleanup || (()=>{}));
+
+  const resetBtn = el("button", { class:"btn btn--sm", type:"button" }, "Reset alle filters");
   resetBtn.addEventListener("click", ()=>{
-    state.sex = ""; state.tournament = ""; state.season = ""; state.distance = ""; state.locatie = ""; state.nat = ""; state.name = "";
-    ddSex.input.value = "";
-    ddTournament.input.value = "";
-    ddSeason.input.value = "";
-    ddDistance.input.value = "";
-    ddLocatie.input.value = "";
-    ddNat.input.value = "";
-    ddName.input.value = "";
+    state.sex.clear();
+    state.tournament.clear();
+    state.season.clear();
+    state.distance.clear();
+    state.locatie.clear();
+    state.nat.clear();
+    state.name.clear();
+    
+    // Re-render all dropdowns to update their labels
+    const filterSection = root.querySelector(".pivotFilters");
+    if(filterSection){
+      clear(filterSection);
+      filterSection.appendChild(msSex);
+      filterSection.appendChild(msTournament);
+      filterSection.appendChild(msSeason);
+      filterSection.appendChild(msDistance);
+      filterSection.appendChild(msLocatie);
+      filterSection.appendChild(msNat);
+      filterSection.appendChild(msName);
+      filterSection.appendChild(el("div", { class:"pivotActions" }, 
+        resetBtn, 
+        el("button", { class:"btn btn--ghost btn--sm", type:"button", onclick:()=>router.go("home") }, "Terug naar menu")
+      ));
+    }
+    
     renderTable();
   });
 
   const filtersGrid = el("div", { class:"pivotFilters" },
-    filterRow("Sekse", ddSex.wrap, clearBtn(()=>{ state.sex=""; ddSex.input.value=""; renderTable(); })),
-    filterRow("Wedstrijd", ddTournament.wrap, clearBtn(()=>{ state.tournament=""; ddTournament.input.value=""; renderTable(); })),
-    filterRow("Seizoen", ddSeason.wrap, clearBtn(()=>{ state.season=""; ddSeason.input.value=""; renderTable(); })),
-    filterRow("Afstand", ddDistance.wrap, clearBtn(()=>{ state.distance=""; ddDistance.input.value=""; renderTable(); })),
-    filterRow("Locatie", ddLocatie.wrap, clearBtn(()=>{ state.locatie=""; ddLocatie.input.value=""; renderTable(); })),
-    filterRow("Nationaliteit", ddNat.wrap, clearBtn(()=>{ state.nat=""; ddNat.input.value=""; renderTable(); })),
-    filterRow("Naam", ddName.wrap, clearBtn(()=>{ state.name=""; ddName.input.value=""; renderTable(); })),
-    el("div", { class:"pivotActions" }, resetBtn, el("button", { class:"btn btn--ghost btn--sm", type:"button", onclick:()=>router.go("home") }, "Terug naar menu"))
+    msSex,
+    msTournament,
+    msSeason,
+    msDistance,
+    msLocatie,
+    msNat,
+    msName,
+    el("div", { class:"pivotActions" }, 
+      resetBtn, 
+      el("button", { class:"btn btn--ghost btn--sm", type:"button", onclick:()=>router.go("home") }, "Terug naar menu")
+    )
   );
+
+  const filtersSummary = el("div", { class:"pivotSummary" });
+  
+  function updateSummary(){
+    filtersSummary.textContent = activeFiltersSummary();
+  }
+  
+  // Override renderTable to also update summary
+  const originalRenderTable = renderTable;
+  renderTable = function(){
+    originalRenderTable();
+    updateSummary();
+  };
 
   const card = sectionCard({
     title:"Sebastiaans Draaitabel",
-    subtitle:"Filters (Results tabblad) bovenin, daaronder kolom A t/m L. Sortering is altijd nieuwste seizoen bovenaan.",
+    subtitle:"Selecteer filters om resultaten te zien. Meerdere waarden per filter zijn mogelijk. Sortering is altijd nieuwste seizoen bovenaan.",
     children:[
       filtersGrid,
+      filtersSummary,
       countEl,
       tableWrap
     ]
   });
 
   root.appendChild(card);
+  updateSummary();
   renderTable();
 }

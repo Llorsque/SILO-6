@@ -5,17 +5,26 @@
      .mod--champions .myClass { ... }
 */
 
-/* Remove the outer sectionCard header for this module (we keep the internal header). */
-.mod--champions .championsCard > .card__title{ display:none; }
-.mod--champions .championsCard > .hr{ display:none; }
+.mod--champions .ms{ display:flex; flex-direction:column; gap:8px; }
+.mod--champions .ms__chips{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.mod--champions .ms__chip,
+.mod--champions .ms__clear{ border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.06); color:inherit; padding:6px 10px; border-radius:999px; cursor:pointer; }
+.mod--champions .ms__clear{ opacity:0.9; }
 
-/* Multi-select filter layout */
-.mod--champions .msWrap{ display:flex; flex-direction:column; gap:8px; }
-.mod--champions .msControls{ display:flex; align-items:center; gap:10px; }
-.mod--champions .msHint{ opacity:0.75; font-size:12px; padding-top:2px; }
+.mod--champions .ms__actions{ display:flex; gap:8px; padding:8px; border-bottom:1px solid rgba(255,255,255,0.08); }
+.mod--champions .ms__action{ border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.06); color:inherit; padding:6px 10px; border-radius:10px; cursor:pointer; }
 
-/* Multi-select dropdown affordances */
-.mod--champions .dropdown--ms{ min-width: 220px; }
-.mod--champions .dropdown__item{ display:flex; align-items:center; gap:10px; }
-.mod--champions .dropdown__check{ width:14px; display:inline-block; }
-.mod--champions .dropdown__item--on{ font-weight:600; }
+.mod--champions .ms__item{ display:flex; gap:10px; align-items:center; }
+.mod--champions .ms__check{ width:18px; text-align:center; opacity:0.9; }
+.mod--champions .ms__item--on{ background:rgba(82,232,232,0.12); }
+
+/* Medal overview: neatly aligned cards next to each other */
+.mod--champions .medalSummaryWrap{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+.mod--champions .medalCard{ border:1px solid rgba(255,255,255,0.16); border-radius:16px; padding:12px; }
+
+/* Results table: always show clear table borders */
+.mod--champions .dataTable{ width:100%; border-collapse:collapse; border:1px solid rgba(255,255,255,0.16); border-radius:16px; overflow:hidden; }
+.mod--champions .dataTable th,
+.mod--champions .dataTable td{ border-bottom:1px solid rgba(255,255,255,0.10); padding:10px 12px; vertical-align:top; }
+.mod--champions .dataTable th{ border-bottom:1px solid rgba(255,255,255,0.16); }
+.mod--champions .dataTable tr:last-child td{ border-bottom:none; }

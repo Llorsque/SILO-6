@@ -86,6 +86,104 @@ function typeableDropdown({placeholder, value, options, onChange}){
   return { wrap, input };
 }
 
+// Typeable multi-select dropdown with chips.
+// - selectedSet holds the selected values.
+// - onChange is called after any toggle/clear.
+function typeableMultiSelect({ placeholder, selectedSet, options, onChange }){
+  const wrap = el("div", { class: "ms" });
+  const chipsWrap = el("div", { class: "ms__chips" });
+  const ddWrap = el("div", { class: "dropdown" });
+  const input = el("input", { class: "input", placeholder, value: "" });
+  const list = el("div", { class: "dropdown__list" });
+
+  let open = false;
+
+  function renderChips(){
+    clear(chipsWrap);
+    if(!selectedSet.size) return;
+    const selected = Array.from(selectedSet);
+    for(const v of selected){
+      const c = el("button", { type:"button", class:"ms__chip" }, `${v} ×`);
+      c.addEventListener("click", ()=>{ selectedSet.delete(v); onChange(); });
+      chipsWrap.appendChild(c);
+    }
+    const clearBtn = el("button", { type:"button", class:"ms__clear" }, "Alles wissen");
+    clearBtn.addEventListener("click", ()=>{ selectedSet.clear(); onChange(); });
+    chipsWrap.appendChild(clearBtn);
+  }
+
+  function renderList(){
+    clear(list);
+    const q = (input.value || "").toLowerCase().trim();
+    const filtered = options
+      .filter(o => String(o).toLowerCase().includes(q))
+      .slice(0, 80);
+
+    // quick actions
+    const actions = el("div", { class:"ms__actions" }, [
+      (()=>{
+        const b = el("button", { type:"button", class:"ms__action" }, "Selecteer alles");
+        b.addEventListener("click", ()=>{ for(const o of options) selectedSet.add(o); onChange(); });
+        return b;
+      })(),
+      (()=>{
+        const b = el("button", { type:"button", class:"ms__action" }, "Alles wissen");
+        b.addEventListener("click", ()=>{ selectedSet.clear(); onChange(); });
+        return b;
+      })()
+    ]);
+    list.appendChild(actions);
+
+    if(!filtered.length){
+      list.appendChild(el("div", { class:"dropdown__item dropdown__item--muted" }, "Geen resultaten"));
+      return;
+    }
+
+    for(const o of filtered){
+      const active = selectedSet.has(o);
+      const it = el("div", { class: active ? "dropdown__item ms__item ms__item--on" : "dropdown__item ms__item" }, [
+        el("span", { class:"ms__check" }, active ? "✓" : ""),
+        el("span", null, String(o))
+      ]);
+      it.addEventListener("click", ()=>{
+        if(selectedSet.has(o)) selectedSet.delete(o);
+        else selectedSet.add(o);
+        onChange();
+      });
+      list.appendChild(it);
+    }
+  }
+
+  function setOpen(v){
+    open = v;
+    if(open){
+      renderList();
+      list.classList.add("dropdown__list--open");
+    }else{
+      list.classList.remove("dropdown__list--open");
+    }
+  }
+
+  input.addEventListener("focus", ()=> setOpen(true));
+  input.addEventListener("input", ()=>{ if(!open) setOpen(true); renderList(); });
+  input.addEventListener("keydown", (e)=>{ if(e.key === "Escape") setOpen(false); });
+
+  document.addEventListener("click", (e)=>{
+    if(!wrap.contains(e.target)) setOpen(false);
+  });
+
+  ddWrap.appendChild(input);
+  ddWrap.appendChild(list);
+
+  wrap.appendChild(chipsWrap);
+  wrap.appendChild(ddWrap);
+
+  // public helper: keep chips in sync after external changes
+  wrap._renderChips = renderChips;
+  renderChips();
+  return { wrap, input, renderChips };
+}
+
 export async function mountChampions(root){
   clear(root);
 
@@ -133,7 +231,8 @@ export async function mountChampions(root){
     for(const r of rows){
       if(r?.season) years.add(r.season);
     }
-    return Array.from(years).sort((a,b)=>a-b);
+    // UI: newest year first.
+    return Array.from(years).sort((a,b)=>b-a);
   }
 
   // Build distances list (we show only the main ones + Eindklassement)
@@ -210,23 +309,29 @@ export async function mountChampions(root){
       const i = tournamentOptions.indexOf(t);
       return i === -1 ? 99 : i;
     };
+    // HARD RULE: newest season must always be shown first (descending).
+    // Secondary: newest date first within season.
     return [...rows].sort((a,b)=>{
+      const ya = Number(a.season||0);
+      const yb = Number(b.season||0);
+      if(ya !== yb) return yb - ya;
+
+      const da = a.dateISO ? new Date(a.dateISO).getTime() : 0;
+      const db = b.dateISO ? new Date(b.dateISO).getTime() : 0;
+      if(da !== db) return db - da;
+
       const ta = orderT(a.tournament), tb = orderT(b.tournament);
-      if(ta!==tb) return ta-tb;
-      if((a.season||0)!==(b.season||0)) return (a.season||0)-(b.season||0);
-      if(String(a.distance).localeCompare(String(b.distance))) return String(a.distance).localeCompare(String(b.distance));
-      if(String(a.sex).localeCompare(String(b.sex))) return String(a.sex).localeCompare(String(b.sex));
-      return (a.pos||99)-(b.pos||99);
+      if(ta !== tb) return ta - tb;
+      const dd = String(a.distance||"").localeCompare(String(b.distance||""));
+      if(dd) return dd;
+      const ss = String(a.sex||"").localeCompare(String(b.sex||""));
+      if(ss) return ss;
+      return (a.pos||99) - (b.pos||99);
     });
   }
 
-  // UI parts
-  const header = el("div", { class:"row", style:"align-items:flex-end; gap:12px" }, [
-    el("div", null, [
-      el("div", { class:"card__title", style:"font-size:18px" }, "Kampioenen"),
-      el("div", { class:"card__sub" }, "Top 3 per selectie (wedstrijd • seizoen • afstand • sekse).")
-    ]),
-    el("div", { class:"spacer" }),
+  // UI parts (module header is provided by sectionCard title/subtitle)
+  const header = el("div", { class:"row", style:"justify-content:flex-end" }, [
     el("button", { class:"btn", type:"button" }, "Reset")
   ]);
 
@@ -285,20 +390,31 @@ export async function mountChampions(root){
       el("div", { class:"divider" }),
       el("div", { class:"filterGroup" }, [
         el("div", { class:"filterLabel" }, "Seizoen"),
-        el("div", { class:"chipRow" }, [
-          chip("All", state.years.size === 0, ()=>{ state.years.clear(); render(); }),
-          ...years.map(y => chip(String(y), state.years.has(y), ()=>{ normalizeSetToggle(state.years, y); render(); }))
-        ])
+        (()=>{
+          const dd = typeableMultiSelect({
+            placeholder: "Selecteer seizoen(en)…",
+            selectedSet: state.years,
+            // IMPORTANT: keep seasons as numbers in state.years (Results.season is numeric).
+            options: years,
+            onChange: ()=> render()
+          });
+          return dd.wrap;
+        })()
       ])
     ]);
 
     const row2 = el("div", { class:"filtersRow" }, [
       el("div", { class:"filterGroup" }, [
         el("div", { class:"filterLabel" }, "Afstand"),
-        el("div", { class:"chipRow" }, [
-          chip("All", state.distances.size === 0, ()=>{ state.distances.clear(); render(); }),
-          ...distances.map(d => chip(d, state.distances.has(d), ()=>{ normalizeSetToggle(state.distances, d); render(); }))
-        ])
+        (()=>{
+          const dd = typeableMultiSelect({
+            placeholder: "Selecteer afstand(en)…",
+            selectedSet: state.distances,
+            options: distances,
+            onChange: ()=> render()
+          });
+          return dd.wrap;
+        })()
       ]),
       el("div", { class:"divider" }),
       el("div", { class:"filterGroup" }, [
@@ -444,8 +560,9 @@ export async function mountChampions(root){
   }
 
   const card = sectionCard({
+    // Keep module title/subtitle. (The dataset count line is intentionally removed.)
     title: "Kampioenen",
-    subtitle: meta?.rowCounts?.results ? `Dataset: ${meta.rowCounts.results.toLocaleString("nl-NL")} results-rijen` : "Selecteer filters om de top 3 te zien.",
+    subtitle: "Top 3 per selectie (wedstrijd • seizoen • afstand • sekse).",
     children: [
       el("div", { class:"row" }, [header]),
       el("div", { style:"height:10px" }),

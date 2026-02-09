@@ -1,0 +1,4 @@
+/* Scoped styles only */
+.mod--login .loginForm{ max-width:420px; }
+.mod--login .label{ display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
+.mod--login .notice{ margin-top:6px; }

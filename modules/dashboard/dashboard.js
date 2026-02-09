@@ -5,7 +5,7 @@ import { router } from "../../core/router.js";
 export function mountDashboard(root){
   clear(root);
   root.appendChild(sectionCard({
-    title:"Dashboard",
+    title:"Sebastiaans Draaitabel",
     subtitle:"Module is nog leeg. We bouwen dit later stap voor stap in dev.",
     children:[
       el("div", { class:"notice" }, "Placeholder — nog geen inhoud."),

@@ -5,9 +5,10 @@ import { importExcelFile } from "../../core/excel.js";
 import { loadMeta, clearDataset } from "../../core/storage.js";
 
 function menuBtn(title, desc, route){
-  const children = [el("div", { class:"menuBtn__title" }, title)];
-  if(desc) children.push(el("div", { class:"menuBtn__desc" }, desc));
-  const b = el("div", { class:"menuBtn", role:"button", tabindex:"0" }, children);
+  const b = el("div", { class:"menuBtn", role:"button", tabindex:"0" }, [
+    el("div", { class:"menuBtn__title" }, title),
+    el("div", { class:"menuBtn__desc" }, desc),
+  ]);
   const go = () => router.go(route);
   b.addEventListener("click", go);
   b.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" ") go(); });
@@ -19,16 +20,12 @@ export function mountHome(root){
 
   const meta = loadMeta();
 
-  const hasDataset = !!(meta && meta.rowCounts && meta.rowCounts.results);
-
   const fileInput = el("input", { type:"file", accept:".xlsx,.xls", class:"input" });
   const btnUpload = el("button", { class:"btn", type:"button" }, "Upload Excel (results)");
   const btnClear = el("button", { class:"btn", type:"button" }, "Ontkoppel / verwijderen");
-
-  const statusText = hasDataset
-    ? `Dataset gekoppeld: ${meta.fileName || "(onbekend bestand)"}`
-    : "Geen dataset gekoppeld.";
-  const status = el("div", { style:"color:var(--muted); font-size:12px" }, statusText);
+  const status = el("div", { style:"color:var(--muted); font-size:12px" },
+    meta?.rowCount ? `Dataset gekoppeld: ${meta.rowCount.toLocaleString("nl-NL")} rijen (sheet: ${meta.sheetName || "?"})` : "Geen dataset gekoppeld."
+  );
 
   btnUpload.addEventListener("click", ()=> fileInput.click());
   fileInput.addEventListener("change", async ()=>{
@@ -62,15 +59,13 @@ export function mountHome(root){
     status
   ]);
 
-  const btnDesc = hasDataset ? "" : "Nog leeg";
-
   const grid = el("div", { class:"menuGrid" }, [
-    menuBtn("Dashboard", btnDesc, "dashboard"),
-    menuBtn("Filters & parameters", btnDesc, "filters"),
-    menuBtn("Head-to-Head", btnDesc, "headtohead"),
-    menuBtn("Kampioenen", btnDesc, "champions"),
-    menuBtn("Biografie", btnDesc, "biography"),
-    menuBtn("A Final presentation", btnDesc, "finalpresentation"),
+    menuBtn("Sebastiaans Draaitabel", "Nog leeg", "dashboard"),
+    menuBtn("World Tour Klassementen", "Nog leeg", "filters"),
+    menuBtn("Head-to-Head", "Nog leeg", "headtohead"),
+    menuBtn("Kampioenen", "Nog leeg", "champions"),
+    menuBtn("Biografie", "Nog leeg", "biography"),
+    menuBtn("A Final presentation", "Nog leeg", "finalpresentation"),
   ]);
 
   root.appendChild(controls);

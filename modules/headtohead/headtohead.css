@@ -36,18 +36,6 @@
 }
 .mod--headtohead .pill--wide{padding:10px 12px}
 
-/* Clickable pills (only when count > 0) */
-.mod--headtohead .pill--click{
-  cursor:pointer;
-  border-color: rgba(82,232,232,.55);
-  box-shadow: 0 0 0 3px rgba(82,232,232,.10) inset;
-  background: rgba(82,232,232,.08);
-}
-.mod--headtohead button.pill:disabled{
-  opacity:.55;
-  cursor:default;
-}
-
 .mod--headtohead .hmid{
   border:1px solid rgba(82,232,232,.25);
   background: rgba(82,232,232,.06);
@@ -116,8 +104,46 @@
 .mod--headtohead .msel__row{display:flex; align-items:center; gap:10px; cursor:pointer}
 .mod--headtohead .msel__row input{transform: translateY(1px)}
 
-/* --- Details modal (module scoped) --- */
-.mod--headtohead .h2hModal{
+/* Readability + click affordance */
+.mod--headtohead .hmid{
+  background: rgba(10,14,24,.72);
+  border:1px solid rgba(82,232,232,.28);
+}
+.mod--headtohead .hmid__titleRow{display:flex; justify-content:space-between; align-items:center; gap:10px}
+.mod--headtohead .hmid__titleBtn{
+  border:1px solid rgba(82,232,232,.30);
+  background: rgba(82,232,232,.10);
+  color: inherit;
+  border-radius: 12px;
+  padding: 8px 10px;
+  font-weight: 1000;
+  cursor: pointer;
+}
+.mod--headtohead .hmid__titleBtn:hover{
+  box-shadow: 0 0 0 3px rgba(82,232,232,.12);
+}
+
+.mod--headtohead .pill--click{cursor:pointer}
+.mod--headtohead .pill--click:hover{
+  box-shadow: 0 0 0 3px rgba(82,232,232,.12);
+  border-color: rgba(82,232,232,.35);
+}
+.mod--headtohead .pill--disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+
+/* Make the matrix and cards clearer */
+.mod--headtohead .matrixWrap{
+  border:1px solid rgba(255,255,255,.14);
+}
+.mod--headtohead table.matrix th,
+.mod--headtohead table.matrix td{
+  border-bottom:1px solid rgba(255,255,255,.12);
+}
+
+/* Modal */
+.mod--headtohead .h2hModalOverlay{
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,.55);
@@ -127,84 +153,33 @@
   padding: 18px;
   z-index: 9999;
 }
-.mod--headtohead .h2hModal__dialog{
-  width: min(720px, 100%);
-  max-height: min(560px, 85vh);
-  overflow: hidden;
-  border: 1px solid rgba(82,232,232,.25);
-  background: rgba(10,14,24,.98);
+.mod--headtohead .h2hModal{
+  width: min(720px, 96vw);
+  max-height: 82vh;
+  overflow:auto;
   border-radius: 18px;
-  box-shadow: 0 20px 80px rgba(0,0,0,.45);
-  display:flex;
-  flex-direction:column;
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(10,14,24,.98);
+  box-shadow: 0 20px 60px rgba(0,0,0,.45);
 }
 .mod--headtohead .h2hModal__head{
   display:flex;
   align-items:center;
   justify-content:space-between;
   gap: 12px;
-  padding: 14px 14px;
-  border-bottom: 1px solid rgba(255,255,255,.08);
-}
-.mod--headtohead .h2hModal__title{
-  font-weight: 1000;
-  letter-spacing: .01em;
-}
-.mod--headtohead .h2hModal__body{
-  padding: 12px 14px;
-  overflow: auto;
-}
-.mod--headtohead .h2hModal__row{
-  padding: 10px 10px;
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 12px;
-  background: rgba(255,255,255,.02);
-  margin-bottom: 8px;
-  font-weight: 900;
-}
-
-/* Modal (module-scoped) */
-.mod--headtohead .h2hModal{
-  position:fixed;
-  inset:0;
-  background: rgba(0,0,0,.55);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:18px;
-  z-index:999;
-}
-.mod--headtohead .h2hModal__dialog{
-  width: min(640px, 100%);
-  max-height: min(70vh, 560px);
-  overflow:hidden;
-  border:1px solid var(--line);
+  padding: 14px 14px 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.10);
+  position: sticky;
+  top: 0;
   background: rgba(10,14,24,.98);
-  border-radius:18px;
-  box-shadow: 0 14px 36px rgba(0,0,0,.35);
+}
+.mod--headtohead .h2hModal__title{font-weight:1000}
+.mod--headtohead .h2hModal__body{padding: 12px 14px 16px 14px}
+.mod--headtohead .h2hModal__list{
+  margin: 0;
+  padding-left: 18px;
   display:flex;
   flex-direction:column;
+  gap: 8px;
 }
-.mod--headtohead .h2hModal__head{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  padding:14px 14px;
-  border-bottom:1px solid rgba(255,255,255,.08);
-}
-.mod--headtohead .h2hModal__title{font-weight:1000; letter-spacing:.01em}
-.mod--headtohead .h2hModal__body{
-  padding:14px;
-  overflow:auto;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-.mod--headtohead .h2hModal__row{
-  border:1px solid rgba(255,255,255,.08);
-  background: rgba(255,255,255,.02);
-  border-radius:14px;
-  padding:12px 12px;
-  font-weight:800;
-}
+.mod--headtohead .h2hModal__list li{line-height:1.35}

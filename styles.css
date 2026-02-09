@@ -117,12 +117,16 @@ body{
   border-radius:999px;
   cursor:pointer;
   font-weight:900;
+  transition: all 0.2s ease;
 }
 .chip:hover{border-color: rgba(82,232,232,.35)}
 .chip--on{
-  border-color: rgba(82,232,232,.55);
-  box-shadow: 0 0 0 3px rgba(82,232,232,.10) inset;
-  background: rgba(82,232,232,.08);
+  border-color: rgba(82,232,232,.75);
+  box-shadow: 0 0 0 3px rgba(82,232,232,.15) inset,
+              0 0 12px rgba(82,232,232,.35),
+              0 0 20px rgba(82,232,232,.20);
+  background: rgba(82,232,232,.15);
+  color: rgba(255,255,255,.98);
 }
 
 .filtersCard{

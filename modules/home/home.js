@@ -31,9 +31,7 @@ export function mountHome(root){
   const statusText = resultsCount
     ? `Dataset gekoppeld: ${datasetName ? datasetName + " • " : ""}${resultsCount.toLocaleString("nl-NL")} results-rijen`
     : "Geen dataset gekoppeld.";
-  const status = el("div", { style:"color:var(--muted); font-size:12px" }, statusText); font-size:12px" },
-    meta?.rowCount ? `Dataset gekoppeld: ${meta.rowCount.toLocaleString("nl-NL")} rijen (sheet: ${meta.sheetName || "?"})` : "Geen dataset gekoppeld."
-  );
+  const status = el("div", { style:"color:var(--muted); font-size:12px" }, statusText);
 
   btnUpload.addEventListener("click", ()=> fileInput.click());
   fileInput.addEventListener("change", async ()=>{

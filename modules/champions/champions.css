@@ -4,3 +4,18 @@
    Example:
      .mod--champions .myClass { ... }
 */
+
+/* Remove the outer sectionCard header for this module (we keep the internal header). */
+.mod--champions .championsCard > .card__title{ display:none; }
+.mod--champions .championsCard > .hr{ display:none; }
+
+/* Multi-select filter layout */
+.mod--champions .msWrap{ display:flex; flex-direction:column; gap:8px; }
+.mod--champions .msControls{ display:flex; align-items:center; gap:10px; }
+.mod--champions .msHint{ opacity:0.75; font-size:12px; padding-top:2px; }
+
+/* Multi-select dropdown affordances */
+.mod--champions .dropdown--ms{ min-width: 220px; }
+.mod--champions .dropdown__item{ display:flex; align-items:center; gap:10px; }
+.mod--champions .dropdown__check{ width:14px; display:inline-block; }
+.mod--champions .dropdown__item--on{ font-weight:600; }

@@ -36,6 +36,18 @@
 }
 .mod--headtohead .pill--wide{padding:10px 12px}
 
+/* Clickable pills (only when count > 0) */
+.mod--headtohead .pill--click{
+  cursor:pointer;
+  border-color: rgba(82,232,232,.55);
+  box-shadow: 0 0 0 3px rgba(82,232,232,.10) inset;
+  background: rgba(82,232,232,.08);
+}
+.mod--headtohead button.pill:disabled{
+  opacity:.55;
+  cursor:default;
+}
+
 .mod--headtohead .hmid{
   border:1px solid rgba(82,232,232,.25);
   background: rgba(82,232,232,.06);
@@ -103,3 +115,96 @@
 .mod--headtohead .msel__list{display:flex; flex-direction:column; gap:6px}
 .mod--headtohead .msel__row{display:flex; align-items:center; gap:10px; cursor:pointer}
 .mod--headtohead .msel__row input{transform: translateY(1px)}
+
+/* --- Details modal (module scoped) --- */
+.mod--headtohead .h2hModal{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 18px;
+  z-index: 9999;
+}
+.mod--headtohead .h2hModal__dialog{
+  width: min(720px, 100%);
+  max-height: min(560px, 85vh);
+  overflow: hidden;
+  border: 1px solid rgba(82,232,232,.25);
+  background: rgba(10,14,24,.98);
+  border-radius: 18px;
+  box-shadow: 0 20px 80px rgba(0,0,0,.45);
+  display:flex;
+  flex-direction:column;
+}
+.mod--headtohead .h2hModal__head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+  padding: 14px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.mod--headtohead .h2hModal__title{
+  font-weight: 1000;
+  letter-spacing: .01em;
+}
+.mod--headtohead .h2hModal__body{
+  padding: 12px 14px;
+  overflow: auto;
+}
+.mod--headtohead .h2hModal__row{
+  padding: 10px 10px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  background: rgba(255,255,255,.02);
+  margin-bottom: 8px;
+  font-weight: 900;
+}
+
+/* Modal (module-scoped) */
+.mod--headtohead .h2hModal{
+  position:fixed;
+  inset:0;
+  background: rgba(0,0,0,.55);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  z-index:999;
+}
+.mod--headtohead .h2hModal__dialog{
+  width: min(640px, 100%);
+  max-height: min(70vh, 560px);
+  overflow:hidden;
+  border:1px solid var(--line);
+  background: rgba(10,14,24,.98);
+  border-radius:18px;
+  box-shadow: 0 14px 36px rgba(0,0,0,.35);
+  display:flex;
+  flex-direction:column;
+}
+.mod--headtohead .h2hModal__head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:14px 14px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.mod--headtohead .h2hModal__title{font-weight:1000; letter-spacing:.01em}
+.mod--headtohead .h2hModal__body{
+  padding:14px;
+  overflow:auto;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.mod--headtohead .h2hModal__row{
+  border:1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.02);
+  border-radius:14px;
+  padding:12px 12px;
+  font-weight:800;
+}

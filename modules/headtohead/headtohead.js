@@ -20,7 +20,10 @@ import { loadDataset, loadMeta } from "../../core/storage.js";
 
 function chip(label, active, onClick){
   const b = el("button", { type:"button", class: active ? "chip chip--on" : "chip" }, label);
-  b.addEventListener("click", onClick);
+  // IMPORTANT: chips must visibly toggle ON/OFF without re-rendering the whole filters UI.
+  b.addEventListener("click", ()=>{
+    onClick && onClick(b);
+  });
   return b;
 }
 
@@ -167,6 +170,62 @@ function isEligibleRun(r){
   return rk === "final a" || rk === "eindklassement";
 }
 
+function formatDistanceLabel(d){
+  const s = String(d || "").trim();
+  if(!s) return "";
+  const m = s.match(/^\s*(\d{2,4})\s*m\s*$/i);
+  if(m) return `${m[1]} meter`;
+  return s;
+}
+
+function tournamentLabel(short){
+  if(short === "WC") return "WC/WT";
+  return short || "";
+}
+
+function buildReadableResultLine(e){
+  // User format: "1500 meter, WC/WT, Dordrecht, 2026"
+  return `${formatDistanceLabel(e.distance)}, ${tournamentLabel(e.tournamentShort)}, ${e.locatie || "—"}, ${e.season || "—"}`;
+}
+
+function openDetailsModal({ title, lines }){
+  // Module-scoped modal (no global dependencies)
+  const overlay = el("div", { class:"h2hModal__overlay" });
+  const modal = el("div", { class:"h2hModal" });
+  const head = el("div", { class:"h2hModal__head" }, [
+    el("div", { class:"h2hModal__title" }, title || "Details"),
+    el("button", { type:"button", class:"btn btn--sm h2hModal__close" }, "✕")
+  ]);
+
+  const body = el("div", { class:"h2hModal__body" });
+  if(!lines || !lines.length){
+    body.appendChild(el("div", { class:"muted" }, "Geen details beschikbaar."));
+  }else{
+    const ul = el("ul", { class:"h2hModal__list" });
+    for(const line of lines){
+      ul.appendChild(el("li", { class:"h2hModal__item" }, line));
+    }
+    body.appendChild(ul);
+  }
+
+  modal.appendChild(head);
+  modal.appendChild(body);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  const close = ()=>{
+    try{ document.body.removeChild(overlay); }catch(_){ /* ignore */ }
+  };
+  head.querySelector(".h2hModal__close").addEventListener("click", close);
+  overlay.addEventListener("click", (e)=>{ if(e.target === overlay) close(); });
+  document.addEventListener("keydown", function onKey(e){
+    if(e.key === "Escape"){
+      document.removeEventListener("keydown", onKey);
+      close();
+    }
+  });
+}
+
 function filterRows(results, filters){
   const tSet = filters.tournaments;
   const dSet = filters.distances;
@@ -239,11 +298,24 @@ function computeMetrics(filteredRows, riders){
 
   // shared results and wins matrix
   const events = new Map(); // eventKey -> Map(rider->pos)
+  const eventMeta = new Map(); // eventKey -> { distance, tournamentShort, locatie, season, dateISO, runKey }
   for(const r of filteredRows){
     if(!riders.includes(r.skaterName)) continue;
     const key = buildEventKey(r);
     if(!events.has(key)) events.set(key, new Map());
     const mp = events.get(key);
+
+    if(!eventMeta.has(key)){
+      eventMeta.set(key, {
+        distance: r.distance,
+        tournamentShort: r.tournamentShort,
+        locatie: r.locatie,
+        season: r.season,
+        dateISO: r.dateISO,
+        runKey: r.runKey
+      });
+    }
+
     const p = Number(r.pos);
     if(!p) return;
     const prev = mp.get(r.skaterName);
@@ -251,17 +323,19 @@ function computeMetrics(filteredRows, riders){
     if(prev == null || p < prev) mp.set(r.skaterName, p);
   }
 
-  // pairwise stats
+  // pairwise stats + details (which results)
   const pair = {};
+  const pairDetails = {};
   for(let i=0;i<riders.length;i++){
     for(let j=0;j<riders.length;j++){
       if(i===j) continue;
       const a=riders[i], b=riders[j];
       pair[`${a}||${b}`] = { shared:0, aAhead:0, bAhead:0, ties:0 };
+      pairDetails[`${a}||${b}`] = { sharedKeys:[], aAheadKeys:[], bAheadKeys:[], tiesKeys:[] };
     }
   }
 
-  for(const mp of events.values()){
+  for(const [eventKey, mp] of events.entries()){
     for(let i=0;i<riders.length;i++){
       for(let j=i+1;j<riders.length;j++){
         const a=riders[i], b=riders[j];
@@ -271,21 +345,33 @@ function computeMetrics(filteredRows, riders){
         pair[`${a}||${b}`].shared++;
         pair[`${b}||${a}`].shared++;
 
+        pairDetails[`${a}||${b}`].sharedKeys.push(eventKey);
+        pairDetails[`${b}||${a}`].sharedKeys.push(eventKey);
+
         if(pa < pb){
           pair[`${a}||${b}`].aAhead++;
           pair[`${b}||${a}`].bAhead++;
+
+          pairDetails[`${a}||${b}`].aAheadKeys.push(eventKey);
+          pairDetails[`${b}||${a}`].bAheadKeys.push(eventKey);
         }else if(pb < pa){
           pair[`${a}||${b}`].bAhead++;
           pair[`${b}||${a}`].aAhead++;
+
+          pairDetails[`${a}||${b}`].bAheadKeys.push(eventKey);
+          pairDetails[`${b}||${a}`].aAheadKeys.push(eventKey);
         }else{
           pair[`${a}||${b}`].ties++;
           pair[`${b}||${a}`].ties++;
+
+          pairDetails[`${a}||${b}`].tiesKeys.push(eventKey);
+          pairDetails[`${b}||${a}`].tiesKeys.push(eventKey);
         }
       }
     }
   }
 
-  return { byRider, podium, bestPos, participation, pair };
+  return { byRider, podium, bestPos, participation, pair, pairDetails, eventMeta };
 }
 
 function riderCard(name, meta, metrics){
@@ -310,12 +396,79 @@ function riderCard(name, meta, metrics){
 
 function compareMiddle(a, b, metrics){
   const s = metrics.pair[`${a}||${b}`] || { shared:0, aAhead:0, bAhead:0, ties:0 };
+
+  const details = metrics.pairDetails?.[`${a}||${b}`] || { sharedKeys:[], aAheadKeys:[], bAheadKeys:[], tiesKeys:[] };
+
+  function tournamentLabel(k){
+    if(k === "WC") return "WC/WT";
+    return k;
+  }
+  function distanceLabel(d){
+    const s = String(d || "");
+    // Prefer wording like "1500 meter" in the popup.
+    if(/^[0-9]+m$/i.test(s)) return s.replace(/m$/i, " meter");
+    return s;
+  }
+  function formatEventLine(eventKey){
+    const m = metrics.eventMeta?.get(eventKey);
+    if(!m) return eventKey;
+    const dist = distanceLabel(m.distance);
+    const tourn = tournamentLabel(m.tournamentShort);
+    const loc = m.locatie || "—";
+    const season = m.season || "—";
+    return `${dist}, ${tourn}, ${loc}, ${season}`;
+  }
+
+  function openPopup(title, keys){
+    if(!keys || !keys.length) return;
+
+    // Modal overlay (module-scoped class names)
+    const overlay = el("div", { class:"h2hModal" });
+    const dialog = el("div", { class:"h2hModal__dialog" });
+    const head = el("div", { class:"h2hModal__head" }, [
+      el("div", { class:"h2hModal__title" }, title),
+      el("button", { type:"button", class:"btn btn--sm", onclick: ()=> overlay.remove() }, "Sluiten")
+    ]);
+    const body = el("div", { class:"h2hModal__body" });
+    for(const k of keys){
+      body.appendChild(el("div", { class:"h2hModal__row" }, formatEventLine(k)));
+    }
+    dialog.appendChild(head);
+    dialog.appendChild(body);
+    overlay.appendChild(dialog);
+
+    overlay.addEventListener("click", (e)=>{
+      if(e.target === overlay) overlay.remove();
+    });
+    document.body.appendChild(overlay);
+  }
+
+  function pillBtn(label, count, onClick){
+    const isOn = Number(count) > 0;
+    return el(
+      "button",
+      {
+        type:"button",
+        class: isOn ? "pill pill--wide pill--click" : "pill pill--wide",
+        disabled: !isOn,
+        onclick: ()=>{ if(isOn) onClick(); }
+      },
+      label
+    );
+  }
+
   return el("div", { class:"hmid" }, [
     el("div", { class:"hmid__title" }, "Vergelijking"),
     el("div", { class:"hmid__row" }, [
-      el("div", { class:"pill pill--wide" }, `Samen in uitslag: ${s.shared}`),
-      el("div", { class:"pill pill--wide" }, `Winst ${a.split(" ")[0]}: ${s.aAhead}`),
-      el("div", { class:"pill pill--wide" }, `Winst ${b.split(" ")[0]}: ${s.bAhead}`),
+      pillBtn(`Samen in uitslag: ${s.shared}`, s.shared, ()=>{
+        openPopup("Samen in uitslag", details.sharedKeys);
+      }),
+      pillBtn(`Winst ${a.split(" ")[0]}: ${s.aAhead}`, s.aAhead, ()=>{
+        openPopup(`Winst ${a.split(" ")[0]}`, details.aAheadKeys);
+      }),
+      pillBtn(`Winst ${b.split(" ")[0]}: ${s.bAhead}`, s.bAhead, ()=>{
+        openPopup(`Winst ${b.split(" ")[0]}`, details.bAheadKeys);
+      }),
       el("div", { class:"pill pill--wide" }, `Gelijk: ${s.ties}`)
     ]),
     el("div", { class:"muted", style:"margin-top:10px" },
@@ -493,14 +646,18 @@ export async function mountHeadToHead(root){
         el("div", { class:"muted" }, meta?.name ? `Dataset: ${meta.name}` : "")
       ]),
       el("div", { class:"chipRow" }, tournaments.map(t =>
-        chip(t.label, tSet.has(t.key), ()=>{
+        chip(t.label, tSet.has(t.key), (btn)=>{
           normalizeSetToggle(tSet, t.key);
+          // Toggle visual state immediately
+          btn.classList.toggle("chip--on", tSet.has(t.key));
           renderResults();
         })
       )),
       el("div", { class:"chipRow", style:"margin-top:10px" }, distances.map(d =>
-        chip(d.label, dSet.has(d.key), ()=>{
+        chip(d.label, dSet.has(d.key), (btn)=>{
           normalizeSetToggle(dSet, d.key);
+          // Toggle visual state immediately
+          btn.classList.toggle("chip--on", dSet.has(d.key));
           renderResults();
         })
       )),

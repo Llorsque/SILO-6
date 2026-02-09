@@ -5,10 +5,13 @@ import { importExcelFile } from "../../core/excel.js";
 import { loadMeta, clearDataset } from "../../core/storage.js";
 
 function menuBtn(title, desc, route){
-  const b = el("div", { class:"menuBtn", role:"button", tabindex:"0" }, [
+  const children = [
     el("div", { class:"menuBtn__title" }, title),
-    el("div", { class:"menuBtn__desc" }, desc),
-  ]);
+  ];
+  if(desc){
+    children.push(el("div", { class:"menuBtn__desc" }, desc));
+  }
+  const b = el("div", { class:"menuBtn", role:"button", tabindex:"0" }, children);
   const go = () => router.go(route);
   b.addEventListener("click", go);
   b.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" ") go(); });
@@ -23,7 +26,12 @@ export function mountHome(root){
   const fileInput = el("input", { type:"file", accept:".xlsx,.xls", class:"input" });
   const btnUpload = el("button", { class:"btn", type:"button" }, "Upload Excel (results)");
   const btnClear = el("button", { class:"btn", type:"button" }, "Ontkoppel / verwijderen");
-  const status = el("div", { style:"color:var(--muted); font-size:12px" },
+    const resultsCount = meta?.rowCount ?? meta?.rowCounts?.results ?? 0;
+  const datasetName = meta?.fileName ? meta.fileName : "";
+  const statusText = resultsCount
+    ? `Dataset gekoppeld: ${datasetName ? datasetName + " • " : ""}${resultsCount.toLocaleString("nl-NL")} results-rijen`
+    : "Geen dataset gekoppeld.";
+  const status = el("div", { style:"color:var(--muted); font-size:12px" }, statusText); font-size:12px" },
     meta?.rowCount ? `Dataset gekoppeld: ${meta.rowCount.toLocaleString("nl-NL")} rijen (sheet: ${meta.sheetName || "?"})` : "Geen dataset gekoppeld."
   );
 
@@ -60,12 +68,12 @@ export function mountHome(root){
   ]);
 
   const grid = el("div", { class:"menuGrid" }, [
-    menuBtn("Sebastiaans Draaitabel", "Nog leeg", "dashboard"),
-    menuBtn("World Tour Klassementen", "Nog leeg", "filters"),
-    menuBtn("Head-to-Head", "Nog leeg", "headtohead"),
-    menuBtn("Kampioenen", "Nog leeg", "champions"),
-    menuBtn("Biografie", "Nog leeg", "biography"),
-    menuBtn("A Final presentation", "Nog leeg", "finalpresentation"),
+    menuBtn("Sebastiaans Draaitabel", resultsCount ? "" : "Nog leeg", "dashboard"),
+    menuBtn("World Tour Klassementen", resultsCount ? "" : "Nog leeg", "filters"),
+    menuBtn("Head-to-Head", resultsCount ? "" : "Nog leeg", "headtohead"),
+    menuBtn("Kampioenen", resultsCount ? "" : "Nog leeg", "champions"),
+    menuBtn("Biografie", resultsCount ? "" : "Nog leeg", "biography"),
+    menuBtn("A Final presentation", resultsCount ? "" : "Nog leeg", "finalpresentation"),
   ]);
 
   root.appendChild(controls);

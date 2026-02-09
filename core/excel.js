@@ -198,7 +198,6 @@ export async function importExcelFile(file){
   });
 
   const meta = {
-    fileName: file?.name || null,
     allowedSheets: Object.values(found),
     ignoredSheets: presentBlocked,
     rowCounts: {

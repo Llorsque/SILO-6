@@ -3,7 +3,6 @@ import { el, clear } from "./dom.js";
 import { unloadAllModuleCss, ensureModuleCss } from "./module_css.js";
 
 import { mountHome } from "../modules/home/home.js";
-import { mountLogin } from "../modules/login/login.js";
 import { mountDashboard } from "../modules/dashboard/dashboard.js";
 import { mountFilters } from "../modules/filters/filters.js";
 import { mountHeadToHead } from "../modules/headtohead/headtohead.js";
@@ -55,7 +54,6 @@ function safeMount(mountFn, routeKey){
 }
 
 router.register("home", safeMount(mountHome, "home"));
-router.register("login", safeMount(mountLogin, "login"));
 router.register("dashboard", safeMount(mountDashboard, "dashboard"));
 router.register("filters", safeMount(mountFilters, "filters"));
 router.register("headtohead", safeMount(mountHeadToHead, "headtohead"));

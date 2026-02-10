@@ -60,8 +60,8 @@ export function mountLogin(root){
   
   const card = el("div", { class:"login-card" }, [
     el("div", { class:"login-header" }, [
-      el("h1", { class:"login-title" }, "SILO-6"),
-      el("p", { class:"login-subtitle" }, "Speed Skating Analytics Platform")
+      el("h1", { class:"login-title" }, "SILO"),
+      el("p", { class:"login-subtitle" }, "Sebastiaan's Information Layer & Orchestrationsystem")
     ]),
     
     el("div", { class:"login-form" }, [

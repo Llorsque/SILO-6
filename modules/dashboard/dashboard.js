@@ -212,9 +212,9 @@ export async function mountDashboard(root){
   const optionsToernooi = {
     pos: getPositionOptions(resultsAll),
     nat: getUniqueOptions(resultsAll, r=>r.nat),
-    tournament: getUniqueOptions(resultsAll, r=>r.wedstrijdRaw || r.tournament),
-    sex: getUniqueOptions(resultsAll, r=>r.sekseRaw || r.sex),
-    distance: getUniqueOptions(resultsAll, r=>r.distance), // Use normalized distance, not afstandRaw
+    tournament: getUniqueOptions(resultsAll, r=>r.tournament), // Use normalized tournament
+    sex: getUniqueOptions(resultsAll, r=>r.sex), // Use normalized sex
+    distance: getUniqueOptions(resultsAll, r=>r.distance), // Use normalized distance
     season: getSeasonOptions(resultsAll)
   };
 
@@ -256,7 +256,7 @@ export async function mountDashboard(root){
         if(!state.name.has(v)) return false;
       }
     } else if(viewMode === "toernooi"){
-      // Toernooi filter logic
+      // Toernooi filter logic - use normalized fields for consistency
       if(state.pos && state.pos.size > 0){
         const p = Number(r.pos);
         if(!Number.isFinite(p) || !state.pos.has(p)) return false;
@@ -266,15 +266,15 @@ export async function mountDashboard(root){
         if(!state.nat.has(v)) return false;
       }
       if(state.tournament && state.tournament.size > 0){
-        const v = normalizeForComparison(r.wedstrijdRaw || r.tournament);
+        const v = normalizeForComparison(r.tournament); // Use normalized tournament
         if(!state.tournament.has(v)) return false;
       }
       if(state.sex && state.sex.size > 0){
-        const v = normalizeForComparison(r.sekseRaw || r.sex);
+        const v = normalizeForComparison(r.sex); // Use normalized sex
         if(!state.sex.has(v)) return false;
       }
       if(state.distance && state.distance.size > 0){
-        const v = normalizeForComparison(r.distance); // Use normalized distance, not afstandRaw
+        const v = normalizeForComparison(r.distance); // Use normalized distance
         if(!state.distance.has(v)) return false;
       }
       if(state.season && state.season.size > 0){

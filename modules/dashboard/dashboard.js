@@ -12,6 +12,72 @@ function normalizeForComparison(s){
   return normalizeSpaces(s).toLowerCase();
 }
 
+function createSearchableFilter(label, options, stateSet, onChange){
+  const searchInput = el("input", { 
+    type:"text", 
+    class:"filterSearchInput", 
+    placeholder:`Zoek ${label.toLowerCase()}...`
+  });
+  
+  const resultsWrap = el("div", { class:"searchResults" });
+  
+  function renderResults(query = ""){
+    clear(resultsWrap);
+    
+    const q = query.toLowerCase().trim();
+    const filtered = q 
+      ? options.filter(opt => opt.toLowerCase().includes(q))
+      : options;
+    
+    if(filtered.length === 0){
+      resultsWrap.appendChild(
+        el("div", { class:"searchNoResults" }, "Geen resultaten")
+      );
+      return;
+    }
+    
+    // Limit display to first 50 results for performance
+    const display = filtered.slice(0, 50);
+    
+    for(const opt of display){
+      const isActive = stateSet.has(normalizeForComparison(opt));
+      const btn = el("button", { 
+        type:"button", 
+        class: isActive ? "searchResult searchResult--active" : "searchResult"
+      }, opt);
+      btn.addEventListener("click", ()=>{
+        const normalized = normalizeForComparison(opt);
+        if(stateSet.has(normalized)){
+          stateSet.delete(normalized);
+        }else{
+          stateSet.add(normalized);
+        }
+        onChange();
+      });
+      resultsWrap.appendChild(btn);
+    }
+    
+    if(filtered.length > 50){
+      resultsWrap.appendChild(
+        el("div", { class:"searchNoResults" }, `... en ${filtered.length - 50} meer`)
+      );
+    }
+  }
+  
+  searchInput.addEventListener("input", ()=>{
+    renderResults(searchInput.value);
+  });
+  
+  // Initial render
+  renderResults();
+  
+  return el("div", { class:"filterSection" }, [
+    el("div", { class:"filterSection__label" }, label),
+    el("div", { class:"filterSection__search" }, searchInput),
+    resultsWrap
+  ]);
+}
+
 function safeSeason(r){
   const n = Number(r?.season);
   return Number.isFinite(n) ? n : -1;
@@ -236,7 +302,7 @@ export async function mountDashboard(root){
 
     const filterSections = [];
 
-    // Sekse filter
+    // Sekse filter - button style
     filterSections.push(
       el("div", { class:"filterSection" }, [
         el("div", { class:"filterSection__label" }, "Sekse"),
@@ -258,7 +324,7 @@ export async function mountDashboard(root){
       ])
     );
 
-    // Wedstrijd filter
+    // Wedstrijd filter - button style
     filterSections.push(
       el("div", { class:"filterSection" }, [
         el("div", { class:"filterSection__label" }, "Wedstrijd"),
@@ -280,7 +346,7 @@ export async function mountDashboard(root){
       ])
     );
 
-    // Seizoen filter
+    // Seizoen filter - button style
     filterSections.push(
       el("div", { class:"filterSection" }, [
         el("div", { class:"filterSection__label" }, "Seizoen"),
@@ -302,7 +368,7 @@ export async function mountDashboard(root){
       ])
     );
 
-    // Afstand filter
+    // Afstand filter - button style
     filterSections.push(
       el("div", { class:"filterSection" }, [
         el("div", { class:"filterSection__label" }, "Afstand"),
@@ -324,29 +390,15 @@ export async function mountDashboard(root){
       ])
     );
 
-    // Locatie filter
+    // Locatie filter - SEARCH FIELD STYLE
     filterSections.push(
-      el("div", { class:"filterSection" }, [
-        el("div", { class:"filterSection__label" }, "Locatie"),
-        el("div", { class:"filterSection__options" }, 
-          options.locatie.map(opt => {
-            const isActive = state.locatie.has(normalizeForComparison(opt));
-            const btn = el("button", { 
-              type:"button", 
-              class: isActive ? "filterOption filterOption--active" : "filterOption"
-            }, opt);
-            btn.addEventListener("click", ()=>{
-              toggleFilter(state.locatie, opt);
-              renderTable();
-              renderFilters();
-            });
-            return btn;
-          })
-        )
-      ])
+      createSearchableFilter("Locatie", options.locatie, state.locatie, ()=>{
+        renderTable();
+        renderFilters();
+      })
     );
 
-    // Nationaliteit filter
+    // Nationaliteit filter - button style
     filterSections.push(
       el("div", { class:"filterSection" }, [
         el("div", { class:"filterSection__label" }, "Nationaliteit"),
@@ -368,26 +420,12 @@ export async function mountDashboard(root){
       ])
     );
 
-    // Naam filter
+    // Naam filter - SEARCH FIELD STYLE
     filterSections.push(
-      el("div", { class:"filterSection" }, [
-        el("div", { class:"filterSection__label" }, "Naam"),
-        el("div", { class:"filterSection__options" }, 
-          options.name.map(opt => {
-            const isActive = state.name.has(normalizeForComparison(opt));
-            const btn = el("button", { 
-              type:"button", 
-              class: isActive ? "filterOption filterOption--active" : "filterOption"
-            }, opt);
-            btn.addEventListener("click", ()=>{
-              toggleFilter(state.name, opt);
-              renderTable();
-              renderFilters();
-            });
-            return btn;
-          })
-        )
-      ])
+      createSearchableFilter("Naam", options.name, state.name, ()=>{
+        renderTable();
+        renderFilters();
+      })
     );
 
     const resetBtn = el("button", { class:"btn btn--sm", type:"button" }, "Reset alle filters");
@@ -413,7 +451,7 @@ export async function mountDashboard(root){
 
     const card = sectionCard({
       title:"Sebastiaans Draaitabel",
-      subtitle:"Klik op filteropties (zoals Excel draaitabel). Meerdere selecties mogelijk. Sortering: nieuwste seizoen bovenaan.",
+      subtitle:"Klik op filteropties (zoals Excel draaitabel). Gebruik zoeken voor Locatie en Naam. Sortering: nieuwste seizoen bovenaan.",
       children:[
         filtersWrap,
         countEl,

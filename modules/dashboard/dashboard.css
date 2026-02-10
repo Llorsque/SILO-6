@@ -1,12 +1,12 @@
 /* dashboard.css
    Scoped styles for module "dashboard".
-   Excel pivot table style - filters in columns
+   Excel pivot table style - compact and clean
 */
 
 .mod--dashboard .pivotFilters{
   display:grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap:12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap:14px;
   margin-bottom:16px;
 }
 
@@ -20,10 +20,11 @@
   display:flex;
   flex-direction:column;
   gap:0;
-  border:1px solid var(--line);
+  border:1px solid rgba(255,255,255,.12);
   background: rgba(255,255,255,.02);
-  border-radius:12px;
+  border-radius:10px;
   overflow:hidden;
+  min-height:fit-content;
 }
 
 .mod--dashboard .filterSection__label{
@@ -31,45 +32,114 @@
   font-weight:1000;
   color:var(--text);
   letter-spacing:.02em;
-  padding:10px 12px;
-  background: rgba(255,255,255,.05);
-  border-bottom:1px solid var(--line);
+  padding:8px 12px;
+  background: rgba(255,255,255,.06);
+  border-bottom:1px solid rgba(255,255,255,.10);
 }
 
 .mod--dashboard .filterSection__options{
   display:flex;
   flex-direction:column;
-  gap:0;
-  max-height:280px;
+  gap:2px;
+  max-height:320px;
   overflow-y:auto;
-  padding:4px;
+  padding:6px;
 }
 
 .mod--dashboard .filterOption{
-  padding:8px 12px;
+  padding:8px 10px;
   background: transparent;
   border:none;
-  border-radius:8px;
+  border-radius:6px;
   text-align:left;
   cursor:pointer;
   font-weight:700;
-  font-size:13px;
+  font-size:12px;
   color:var(--text);
-  transition: all 0.15s ease;
+  transition: all 0.12s ease;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
 }
 
 .mod--dashboard .filterOption:hover{
-  background: rgba(82,232,232,.08);
+  background: rgba(82,232,232,.10);
 }
 
 .mod--dashboard .filterOption--active{
-  background: rgba(82,232,232,.15);
+  background: rgba(82,232,232,.18);
   color: rgba(255,255,255,.98);
-  box-shadow: 0 0 0 2px rgba(82,232,232,.15) inset,
-              0 0 8px rgba(82,232,232,.25);
+  box-shadow: 0 0 0 1px rgba(82,232,232,.35) inset;
+}
+
+/* Search field style for Locatie and Naam filters */
+.mod--dashboard .filterSection__search{
+  padding:6px;
+}
+
+.mod--dashboard .filterSearchInput{
+  width:100%;
+  padding:8px 10px;
+  background: rgba(0,0,0,.25);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:6px;
+  color:var(--text);
+  font-size:12px;
+  font-weight:700;
+  outline:none;
+  transition: border-color 0.15s ease;
+}
+
+.mod--dashboard .filterSearchInput:focus{
+  border-color: rgba(82,232,232,.45);
+  background: rgba(0,0,0,.35);
+}
+
+.mod--dashboard .filterSearchInput::placeholder{
+  color:rgba(255,255,255,.45);
+  font-weight:600;
+}
+
+.mod--dashboard .searchResults{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  max-height:250px;
+  overflow-y:auto;
+  padding:0 6px 6px 6px;
+}
+
+.mod--dashboard .searchResult{
+  padding:8px 10px;
+  background: transparent;
+  border:none;
+  border-radius:6px;
+  text-align:left;
+  cursor:pointer;
+  font-weight:700;
+  font-size:12px;
+  color:var(--text);
+  transition: all 0.12s ease;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.mod--dashboard .searchResult:hover{
+  background: rgba(82,232,232,.10);
+}
+
+.mod--dashboard .searchResult--active{
+  background: rgba(82,232,232,.18);
+  color: rgba(255,255,255,.98);
+  box-shadow: 0 0 0 1px rgba(82,232,232,.35) inset;
+}
+
+.mod--dashboard .searchNoResults{
+  padding:12px 10px;
+  color:var(--muted);
+  font-size:12px;
+  text-align:center;
 }
 
 .mod--dashboard .pivotActions{
@@ -84,7 +154,7 @@
 .mod--dashboard .pivotCount{
   font-size:13px;
   opacity:0.85;
-  margin: 6px 0 10px;
+  margin: 8px 0 10px;
   font-weight:800;
 }
 

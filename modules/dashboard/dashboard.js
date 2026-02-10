@@ -130,16 +130,6 @@ function getSeasonOptions(results){
   return Array.from(set).filter(n=>Number.isFinite(n)).sort((a,b)=>b-a); // newest first
 }
 
-function hasAnyFilters(state){
-  return state.sex.size > 0 || 
-         state.tournament.size > 0 || 
-         state.season.size > 0 || 
-         state.distance.size > 0 || 
-         state.locatie.size > 0 || 
-         state.nat.size > 0 || 
-         state.name.size > 0;
-}
-
 export async function mountDashboard(root){
   clear(root);
 
@@ -159,8 +149,11 @@ export async function mountDashboard(root){
     return;
   }
 
+  // View mode: "rijder" or "toernooi"
+  let viewMode = "rijder";
+
   // State: Sets with normalized (lowercase) values for case-insensitive matching
-  const state = {
+  const stateRijder = {
     sex: new Set(),
     tournament: new Set(),
     season: new Set(),
@@ -169,6 +162,15 @@ export async function mountDashboard(root){
     nat: new Set(),
     name: new Set()
   };
+
+  const stateToernooi = {
+    // Will be populated later with toernooi-specific filters
+    // Placeholder for now
+  };
+
+  function getCurrentState(){
+    return viewMode === "rijder" ? stateRijder : stateToernooi;
+  }
 
   // Get unique options with case-insensitive deduplication
   function getUniqueOptions(results, keyFn){
@@ -183,7 +185,7 @@ export async function mountDashboard(root){
     return Array.from(map.values()).sort((a,b)=> a.localeCompare(b, "nl"));
   }
 
-  const options = {
+  const optionsRijder = {
     sex: getUniqueOptions(resultsAll, r=>r.sekseRaw || r.sex),
     tournament: getUniqueOptions(resultsAll, r=>r.wedstrijdRaw || r.tournament),
     season: getSeasonOptions(resultsAll),
@@ -193,33 +195,44 @@ export async function mountDashboard(root){
     name: getUniqueOptions(resultsAll, r=>r.skaterName || r.nameRaw)
   };
 
+  const optionsToernooi = {
+    // Will be populated later with toernooi-specific options
+    // Placeholder for now
+  };
+
+  function getCurrentOptions(){
+    return viewMode === "rijder" ? optionsRijder : optionsToernooi;
+  }
+
   function pass(r){
+    const state = getCurrentState();
+    
     // Case-insensitive matching for all filters
-    if(state.sex.size > 0){
+    if(state.sex && state.sex.size > 0){
       const v = normalizeForComparison(r.sekseRaw || r.sex);
       if(!state.sex.has(v)) return false;
     }
-    if(state.tournament.size > 0){
+    if(state.tournament && state.tournament.size > 0){
       const v = normalizeForComparison(r.wedstrijdRaw || r.tournament);
       if(!state.tournament.has(v)) return false;
     }
-    if(state.season.size > 0){
+    if(state.season && state.season.size > 0){
       const y = Number(r.season);
       if(!Number.isFinite(y) || !state.season.has(y)) return false;
     }
-    if(state.distance.size > 0){
+    if(state.distance && state.distance.size > 0){
       const v = normalizeForComparison(r.afstandRaw || r.distance);
       if(!state.distance.has(v)) return false;
     }
-    if(state.locatie.size > 0){
+    if(state.locatie && state.locatie.size > 0){
       const v = normalizeForComparison(r.locatie);
       if(!state.locatie.has(v)) return false;
     }
-    if(state.nat.size > 0){
+    if(state.nat && state.nat.size > 0){
       const v = normalizeForComparison(r.nat);
       if(!state.nat.has(v)) return false;
     }
-    if(state.name.size > 0){
+    if(state.name && state.name.size > 0){
       const v = normalizeForComparison(r.skaterName || r.nameRaw);
       if(!state.name.has(v)) return false;
     }
@@ -239,12 +252,34 @@ export async function mountDashboard(root){
   }
 
   function renderTable(){
+    const state = getCurrentState();
+    
     clear(tableWrap);
     
-    if(!hasAnyFilters(state)){
-      countEl.textContent = "Selecteer minimaal één filter om resultaten te zien";
+    // Check if any filters are active for Rijder view
+    if(viewMode === "rijder"){
+      const hasFilters = state.sex.size > 0 || 
+                        state.tournament.size > 0 || 
+                        state.season.size > 0 || 
+                        state.distance.size > 0 || 
+                        state.locatie.size > 0 || 
+                        state.nat.size > 0 || 
+                        state.name.size > 0;
+      
+      if(!hasFilters){
+        countEl.textContent = "Selecteer minimaal één filter om resultaten te zien";
+        tableWrap.appendChild(el("div", { class:"notice", style:"margin-top:12px" },
+          "Geen filters geselecteerd. Kies één of meer filters bovenaan om de draaitabel te vullen."
+        ));
+        return;
+      }
+    }
+    
+    // For Toernooi view, will add logic later
+    if(viewMode === "toernooi"){
+      countEl.textContent = "Toernooi weergave - nog in ontwikkeling";
       tableWrap.appendChild(el("div", { class:"notice", style:"margin-top:12px" },
-        "Geen filters geselecteerd. Kies één of meer filters bovenaan om de draaitabel te vullen."
+        "Toernooi draaitabel komt binnenkort beschikbaar."
       ));
       return;
     }
@@ -297,9 +332,9 @@ export async function mountDashboard(root){
     tableWrap.appendChild(tbl);
   }
 
-  function renderFilters(){
-    clear(root);
-
+  function renderFiltersRijder(){
+    const state = stateRijder;
+    const options = optionsRijder;
     const filterSections = [];
 
     // Sekse filter - button style
@@ -428,15 +463,60 @@ export async function mountDashboard(root){
       })
     );
 
+    return filterSections;
+  }
+
+  function renderFiltersToernooi(){
+    // Placeholder for toernooi filters - will be implemented later
+    return [
+      el("div", { class:"filterSection" }, [
+        el("div", { class:"filterSection__label" }, "Toernooi Filters"),
+        el("div", { class:"filterSection__options" }, [
+          el("div", { class:"searchNoResults" }, "Filters volgen binnenkort...")
+        ])
+      ])
+    ];
+  }
+
+  function renderFilters(){
+    clear(root);
+
+    // View mode toggle
+    const viewToggle = el("div", { class:"viewToggle" }, [
+      el("button", {
+        type:"button",
+        class: viewMode === "rijder" ? "viewToggle__btn viewToggle__btn--active" : "viewToggle__btn",
+        onclick: ()=>{
+          if(viewMode !== "rijder"){
+            viewMode = "rijder";
+            renderFilters();
+            renderTable();
+          }
+        }
+      }, "Rijder"),
+      el("button", {
+        type:"button",
+        class: viewMode === "toernooi" ? "viewToggle__btn viewToggle__btn--active" : "viewToggle__btn",
+        onclick: ()=>{
+          if(viewMode !== "toernooi"){
+            viewMode = "toernooi";
+            renderFilters();
+            renderTable();
+          }
+        }
+      }, "Toernooi")
+    ]);
+
+    // Get appropriate filters based on view mode
+    const filterSections = viewMode === "rijder" ? renderFiltersRijder() : renderFiltersToernooi();
+
     const resetBtn = el("button", { class:"btn btn--sm", type:"button" }, "Reset alle filters");
     resetBtn.addEventListener("click", ()=>{
-      state.sex.clear();
-      state.tournament.clear();
-      state.season.clear();
-      state.distance.clear();
-      state.locatie.clear();
-      state.nat.clear();
-      state.name.clear();
+      const state = getCurrentState();
+      // Clear all filter sets
+      Object.values(state).forEach(set => {
+        if(set instanceof Set) set.clear();
+      });
       renderTable();
       renderFilters();
     });
@@ -449,10 +529,15 @@ export async function mountDashboard(root){
       ])
     ]);
 
+    const subtitle = viewMode === "rijder" 
+      ? "Rijder weergave: Klik op filteropties. Gebruik zoeken voor Locatie en Naam. Sortering: nieuwste seizoen bovenaan."
+      : "Toernooi weergave: Filters en draaitabel volgen binnenkort.";
+
     const card = sectionCard({
       title:"Sebastiaans Draaitabel",
-      subtitle:"Klik op filteropties (zoals Excel draaitabel). Gebruik zoeken voor Locatie en Naam. Sortering: nieuwste seizoen bovenaan.",
+      subtitle: subtitle,
       children:[
+        viewToggle,
         filtersWrap,
         countEl,
         tableWrap

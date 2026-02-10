@@ -3,6 +3,44 @@
    Excel pivot table style - compact and clean
 */
 
+.mod--dashboard .viewToggle{
+  display:flex;
+  gap:0;
+  margin-bottom:18px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:8px;
+  overflow:hidden;
+  width:fit-content;
+  background: rgba(0,0,0,.25);
+}
+
+.mod--dashboard .viewToggle__btn{
+  padding:10px 24px;
+  background: transparent;
+  border:none;
+  color:var(--muted);
+  font-weight:900;
+  font-size:13px;
+  cursor:pointer;
+  transition: all 0.2s ease;
+  border-right:1px solid rgba(255,255,255,.08);
+}
+
+.mod--dashboard .viewToggle__btn:last-child{
+  border-right:none;
+}
+
+.mod--dashboard .viewToggle__btn:hover{
+  background: rgba(255,255,255,.05);
+  color:var(--text);
+}
+
+.mod--dashboard .viewToggle__btn--active{
+  background: rgba(82,232,232,.18);
+  color: rgba(255,255,255,.98);
+  box-shadow: 0 0 0 1px rgba(82,232,232,.35) inset;
+}
+
 .mod--dashboard .pivotFilters{
   display:grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

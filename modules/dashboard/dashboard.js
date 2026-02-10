@@ -12,12 +12,6 @@ function normalizeForComparison(s){
   return normalizeSpaces(s).toLowerCase();
 }
 
-function chip(label, active, onClick){
-  const b = el("button", { type:"button", class: active ? "chip chip--on" : "chip" }, label);
-  b.addEventListener("click", onClick);
-  return b;
-}
-
 function safeSeason(r){
   const n = Number(r?.season);
   return Number.isFinite(n) ? n : -1;
@@ -246,14 +240,20 @@ export async function mountDashboard(root){
     filterSections.push(
       el("div", { class:"filterSection" }, [
         el("div", { class:"filterSection__label" }, "Sekse"),
-        el("div", { class:"chipRow" }, 
-          options.sex.map(opt => 
-            chip(opt, state.sex.has(normalizeForComparison(opt)), ()=>{
+        el("div", { class:"filterSection__options" }, 
+          options.sex.map(opt => {
+            const isActive = state.sex.has(normalizeForComparison(opt));
+            const btn = el("button", { 
+              type:"button", 
+              class: isActive ? "filterOption filterOption--active" : "filterOption"
+            }, opt);
+            btn.addEventListener("click", ()=>{
               toggleFilter(state.sex, opt);
               renderTable();
               renderFilters();
-            })
-          )
+            });
+            return btn;
+          })
         )
       ])
     );
@@ -262,14 +262,20 @@ export async function mountDashboard(root){
     filterSections.push(
       el("div", { class:"filterSection" }, [
         el("div", { class:"filterSection__label" }, "Wedstrijd"),
-        el("div", { class:"chipRow" }, 
-          options.tournament.map(opt => 
-            chip(opt, state.tournament.has(normalizeForComparison(opt)), ()=>{
+        el("div", { class:"filterSection__options" }, 
+          options.tournament.map(opt => {
+            const isActive = state.tournament.has(normalizeForComparison(opt));
+            const btn = el("button", { 
+              type:"button", 
+              class: isActive ? "filterOption filterOption--active" : "filterOption"
+            }, opt);
+            btn.addEventListener("click", ()=>{
               toggleFilter(state.tournament, opt);
               renderTable();
               renderFilters();
-            })
-          )
+            });
+            return btn;
+          })
         )
       ])
     );
@@ -278,14 +284,20 @@ export async function mountDashboard(root){
     filterSections.push(
       el("div", { class:"filterSection" }, [
         el("div", { class:"filterSection__label" }, "Seizoen"),
-        el("div", { class:"chipRow" }, 
-          options.season.map(opt => 
-            chip(String(opt), state.season.has(opt), ()=>{
+        el("div", { class:"filterSection__options" }, 
+          options.season.map(opt => {
+            const isActive = state.season.has(opt);
+            const btn = el("button", { 
+              type:"button", 
+              class: isActive ? "filterOption filterOption--active" : "filterOption"
+            }, String(opt));
+            btn.addEventListener("click", ()=>{
               toggleFilter(state.season, opt);
               renderTable();
               renderFilters();
-            })
-          )
+            });
+            return btn;
+          })
         )
       ])
     );
@@ -294,14 +306,20 @@ export async function mountDashboard(root){
     filterSections.push(
       el("div", { class:"filterSection" }, [
         el("div", { class:"filterSection__label" }, "Afstand"),
-        el("div", { class:"chipRow" }, 
-          options.distance.map(opt => 
-            chip(opt, state.distance.has(normalizeForComparison(opt)), ()=>{
+        el("div", { class:"filterSection__options" }, 
+          options.distance.map(opt => {
+            const isActive = state.distance.has(normalizeForComparison(opt));
+            const btn = el("button", { 
+              type:"button", 
+              class: isActive ? "filterOption filterOption--active" : "filterOption"
+            }, opt);
+            btn.addEventListener("click", ()=>{
               toggleFilter(state.distance, opt);
               renderTable();
               renderFilters();
-            })
-          )
+            });
+            return btn;
+          })
         )
       ])
     );
@@ -310,14 +328,20 @@ export async function mountDashboard(root){
     filterSections.push(
       el("div", { class:"filterSection" }, [
         el("div", { class:"filterSection__label" }, "Locatie"),
-        el("div", { class:"chipRow" }, 
-          options.locatie.map(opt => 
-            chip(opt, state.locatie.has(normalizeForComparison(opt)), ()=>{
+        el("div", { class:"filterSection__options" }, 
+          options.locatie.map(opt => {
+            const isActive = state.locatie.has(normalizeForComparison(opt));
+            const btn = el("button", { 
+              type:"button", 
+              class: isActive ? "filterOption filterOption--active" : "filterOption"
+            }, opt);
+            btn.addEventListener("click", ()=>{
               toggleFilter(state.locatie, opt);
               renderTable();
               renderFilters();
-            })
-          )
+            });
+            return btn;
+          })
         )
       ])
     );
@@ -326,14 +350,20 @@ export async function mountDashboard(root){
     filterSections.push(
       el("div", { class:"filterSection" }, [
         el("div", { class:"filterSection__label" }, "Nationaliteit"),
-        el("div", { class:"chipRow" }, 
-          options.nat.map(opt => 
-            chip(opt, state.nat.has(normalizeForComparison(opt)), ()=>{
+        el("div", { class:"filterSection__options" }, 
+          options.nat.map(opt => {
+            const isActive = state.nat.has(normalizeForComparison(opt));
+            const btn = el("button", { 
+              type:"button", 
+              class: isActive ? "filterOption filterOption--active" : "filterOption"
+            }, opt);
+            btn.addEventListener("click", ()=>{
               toggleFilter(state.nat, opt);
               renderTable();
               renderFilters();
-            })
-          )
+            });
+            return btn;
+          })
         )
       ])
     );
@@ -342,14 +372,20 @@ export async function mountDashboard(root){
     filterSections.push(
       el("div", { class:"filterSection" }, [
         el("div", { class:"filterSection__label" }, "Naam"),
-        el("div", { class:"chipRow" }, 
-          options.name.map(opt => 
-            chip(opt, state.name.has(normalizeForComparison(opt)), ()=>{
+        el("div", { class:"filterSection__options" }, 
+          options.name.map(opt => {
+            const isActive = state.name.has(normalizeForComparison(opt));
+            const btn = el("button", { 
+              type:"button", 
+              class: isActive ? "filterOption filterOption--active" : "filterOption"
+            }, opt);
+            btn.addEventListener("click", ()=>{
               toggleFilter(state.name, opt);
               renderTable();
               renderFilters();
-            })
-          )
+            });
+            return btn;
+          })
         )
       ])
     );
@@ -377,7 +413,7 @@ export async function mountDashboard(root){
 
     const card = sectionCard({
       title:"Sebastiaans Draaitabel",
-      subtitle:"Klik op filteropties om ze aan/uit te zetten (zoals Excel draaitabel). Meerdere selecties mogelijk. Sortering: nieuwste seizoen bovenaan.",
+      subtitle:"Klik op filteropties (zoals Excel draaitabel). Meerdere selecties mogelijk. Sortering: nieuwste seizoen bovenaan.",
       children:[
         filtersWrap,
         countEl,

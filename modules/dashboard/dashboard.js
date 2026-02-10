@@ -257,6 +257,32 @@ export async function mountDashboard(root){
       }
     } else if(viewMode === "toernooi"){
       // Toernooi filter logic - use normalized fields for consistency
+      
+      // DEBUG: Log first matching attempt
+      if(window.__debugToernooi === undefined) {
+        window.__debugToernooi = true;
+        console.log("=== TOERNOOI DEBUG ===");
+        console.log("Active filters:", {
+          pos: Array.from(state.pos || []),
+          nat: Array.from(state.nat || []),
+          tournament: Array.from(state.tournament || []),
+          sex: Array.from(state.sex || []),
+          distance: Array.from(state.distance || []),
+          season: Array.from(state.season || [])
+        });
+        console.log("Sample record:", {
+          pos: r.pos,
+          nat: r.nat,
+          tournament: r.tournament,
+          tournamentRaw: r.wedstrijdRaw,
+          sex: r.sex,
+          sexRaw: r.sekseRaw,
+          distance: r.distance,
+          distanceRaw: r.afstandRaw,
+          season: r.season
+        });
+      }
+      
       if(state.pos && state.pos.size > 0){
         const p = Number(r.pos);
         if(!Number.isFinite(p) || !state.pos.has(p)) return false;
@@ -301,7 +327,24 @@ export async function mountDashboard(root){
   function renderTable(){
     const state = getCurrentState();
     
+    // Reset debug flag on new render
+    window.__debugToernooi = undefined;
+    
     clear(tableWrap);
+    
+    // DEBUG: Always log when rendering table in Toernooi mode
+    if(viewMode === "toernooi"){
+      console.log("=== RENDERING TOERNOOI TABLE ===");
+      console.log("State filters:", {
+        pos: state.pos ? Array.from(state.pos) : [],
+        nat: state.nat ? Array.from(state.nat) : [],
+        tournament: state.tournament ? Array.from(state.tournament) : [],
+        sex: state.sex ? Array.from(state.sex) : [],
+        distance: state.distance ? Array.from(state.distance) : [],
+        season: state.season ? Array.from(state.season) : []
+      });
+      console.log("Total records in dataset:", resultsAll.length);
+    }
     
     // Check if any filters are active for Rijder view
     if(viewMode === "rijder"){
@@ -341,6 +384,35 @@ export async function mountDashboard(root){
     }
 
     const rows = sortNewestFirst(resultsAll.filter(pass));
+    
+    // DEBUG: Log filtering results for Toernooi
+    if(viewMode === "toernooi"){
+      console.log("Filtered results:", rows.length);
+      if(rows.length > 0){
+        console.log("First matching record:", {
+          tournament: rows[0].tournament,
+          sex: rows[0].sex,
+          distance: rows[0].distance,
+          season: rows[0].season,
+          name: rows[0].skaterName
+        });
+      } else {
+        console.log("NO MATCHES - Checking first 3 records from dataset:");
+        for(let i = 0; i < Math.min(3, resultsAll.length); i++){
+          const r = resultsAll[i];
+          console.log(`Record ${i}:`, {
+            tournament: r.tournament,
+            tournamentNormalized: normalizeForComparison(r.tournament),
+            sex: r.sex,
+            sexNormalized: normalizeForComparison(r.sex),
+            distance: r.distance,
+            distanceNormalized: normalizeForComparison(r.distance),
+            season: r.season
+          });
+        }
+      }
+    }
+    
     countEl.textContent = `${rows.length.toLocaleString("nl-NL")} resultaten`;
 
     const tbl = el("table", { class:"pivotTable" });

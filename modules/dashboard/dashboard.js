@@ -214,7 +214,7 @@ export async function mountDashboard(root){
     nat: getUniqueOptions(resultsAll, r=>r.nat),
     tournament: getUniqueOptions(resultsAll, r=>r.wedstrijdRaw || r.tournament),
     sex: getUniqueOptions(resultsAll, r=>r.sekseRaw || r.sex),
-    distance: getUniqueOptions(resultsAll, r=>r.afstandRaw || r.distance),
+    distance: getUniqueOptions(resultsAll, r=>r.distance), // Use normalized distance, not afstandRaw
     season: getSeasonOptions(resultsAll)
   };
 
@@ -274,7 +274,7 @@ export async function mountDashboard(root){
         if(!state.sex.has(v)) return false;
       }
       if(state.distance && state.distance.size > 0){
-        const v = normalizeForComparison(r.afstandRaw || r.distance);
+        const v = normalizeForComparison(r.distance); // Use normalized distance, not afstandRaw
         if(!state.distance.has(v)) return false;
       }
       if(state.season && state.season.size > 0){

@@ -251,8 +251,9 @@ function seasonsMultiDropdown({ allSeasons, selectedSet, onChange }){
 }
 
 function buildEventKey(r){
-  // Unique event = Column F + H + I + J + K
+  // Unique event = Column F + G + H + I + J + K
   // F = Wedstrijd (tournament)
+  // G = Locatie (location)
   // H = Afstand (distance)
   // I = Datum (date)
   // J = Seizoen (season)
@@ -260,6 +261,7 @@ function buildEventKey(r){
   const date = r.dateISO ? r.dateISO.slice(0,10) : "";
   return [
     r.wedstrijdRaw || r.tournament,  // Column F
+    r.locatie,                        // Column G - NOW INCLUDED
     r.afstandRaw || r.distance,       // Column H
     date,                              // Column I
     r.season,                          // Column J

@@ -24,6 +24,100 @@ function chip(label, active, onClick){
   return b;
 }
 
+function modal(title, content, onClose){
+  const overlay = el("div", { class:"modal-overlay" });
+  const box = el("div", { class:"modal-box" }, [
+    el("div", { class:"modal-header" }, [
+      el("h3", { class:"modal-title" }, title),
+      el("button", { class:"modal-close", type:"button" }, "×")
+    ]),
+    el("div", { class:"modal-content" }, content)
+  ]);
+  
+  overlay.appendChild(box);
+  
+  const close = () => {
+    overlay.remove();
+    if(onClose) onClose();
+  };
+  
+  overlay.addEventListener("click", (e) => {
+    if(e.target === overlay) close();
+  });
+  
+  box.querySelector(".modal-close").addEventListener("click", close);
+  
+  return overlay;
+}
+
+function showSharedEventsModal(events, riderA, riderB){
+  const rows = events.map(ev => {
+    return el("div", { class:"event-row" }, [
+      el("span", {}, ev.tournament || "—"),
+      el("span", {}, ev.distance || "—"),
+      el("span", {}, ev.location || "—"),
+      el("span", {}, String(ev.season || "—"))
+    ]);
+  });
+  
+  const content = el("div", { class:"event-list" }, [
+    el("div", { class:"event-header" }, [
+      el("span", {}, "Wedstrijd"),
+      el("span", {}, "Afstand"),
+      el("span", {}, "Locatie"),
+      el("span", {}, "Seizoen")
+    ]),
+    ...rows
+  ]);
+  
+  if(rows.length === 0){
+    content.appendChild(el("div", { class:"notice", style:"margin-top:10px" }, "Geen gezamenlijke uitslagen gevonden."));
+  }
+  
+  const m = modal(`Samen in uitslag: ${riderA} vs ${riderB}`, content);
+  document.body.appendChild(m);
+}
+
+function showWinsModal(events, winner, loser){
+  const rows = events.map(ev => {
+    const winnerPos = ev.riders[winner] || "—";
+    const loserPos = ev.riders[loser] || "—";
+    
+    return el("div", { class:"event-row-with-pos" }, [
+      el("div", { class:"event-info" }, [
+        el("span", {}, ev.tournament || "—"),
+        el("span", {}, ev.distance || "—"),
+        el("span", {}, ev.location || "—"),
+        el("span", {}, String(ev.season || "—"))
+      ]),
+      el("div", { class:"event-positions" }, [
+        el("span", {}, `${winner}: ${winnerPos}`),
+        el("span", {}, `${loser}: ${loserPos}`)
+      ])
+    ]);
+  });
+  
+  const content = el("div", { class:"event-list" }, [
+    el("div", { class:"event-header-with-pos" }, [
+      el("div", { class:"event-info-header" }, [
+        el("span", {}, "Wedstrijd"),
+        el("span", {}, "Afstand"),
+        el("span", {}, "Locatie"),
+        el("span", {}, "Seizoen")
+      ]),
+      el("div", { class:"event-positions-header" }, "Posities")
+    ]),
+    ...rows
+  ]);
+  
+  if(rows.length === 0){
+    content.appendChild(el("div", { class:"notice", style:"margin-top:10px" }, "Geen overwinningen gevonden."));
+  }
+  
+  const m = modal(`Winst ${winner} over ${loser}`, content);
+  document.body.appendChild(m);
+}
+
 function medalIcon(pos){
   if(pos === 1) return "🥇";
   if(pos === 2) return "🥈";
@@ -270,15 +364,35 @@ function computeMetrics(filteredRows, riders){
     if(prev == null || p < prev) mp.set(r.skaterName, p);
   }
 
-  // pairwise stats
+  // pairwise stats with detailed event tracking
   const pair = {};
+  const pairDetails = {}; // Store detailed event info for modals
+  
   for(let i=0;i<riders.length;i++){
     for(let j=0;j<riders.length;j++){
       if(i===j) continue;
       const a=riders[i], b=riders[j];
-      // Removed "ties" - no longer tracked
       pair[`${a}||${b}`] = { shared:0, aAhead:0, bAhead:0 };
+      pairDetails[`${a}||${b}`] = { sharedEvents: [], aWins: [], bWins: [] };
     }
+  }
+
+  // Build detailed event list from filteredRows for modal display
+  const eventDetails = new Map(); // eventKey -> { tournament, distance, location, season, riders: {name: pos} }
+  for(const r of filteredRows){
+    if(!riders.includes(r.skaterName)) continue;
+    const key = buildEventKey(r);
+    if(!eventDetails.has(key)){
+      eventDetails.set(key, {
+        tournament: r.wedstrijdRaw || r.tournament,
+        distance: r.afstandRaw || r.distance,
+        location: r.locatie,
+        season: r.season,
+        riders: {}
+      });
+    }
+    const p = Number(r.pos);
+    if(p) eventDetails.get(key).riders[r.skaterName] = p;
   }
 
   for(const mp of events.values()){
@@ -288,26 +402,49 @@ function computeMetrics(filteredRows, riders){
         if(!mp.has(a) || !mp.has(b)) continue;
         const pa=mp.get(a), pb=mp.get(b);
 
+        // Find the event key for this event
+        let eventKey = null;
+        for(const [key, riderMap] of events.entries()){
+          if(riderMap === mp){
+            eventKey = key;
+            break;
+          }
+        }
+        const eventInfo = eventKey ? eventDetails.get(eventKey) : null;
+
         // Samen in uitslag: both riders present
         pair[`${a}||${b}`].shared++;
         pair[`${b}||${a}`].shared++;
+        
+        if(eventInfo){
+          pairDetails[`${a}||${b}`].sharedEvents.push(eventInfo);
+          pairDetails[`${b}||${a}`].sharedEvents.push(eventInfo);
+        }
 
         // Winst: lower number (better position) wins
         if(pa < pb){
           // Rider A has better position (lower number)
           pair[`${a}||${b}`].aAhead++;
           pair[`${b}||${a}`].bAhead++;
+          if(eventInfo){
+            pairDetails[`${a}||${b}`].aWins.push(eventInfo);
+            pairDetails[`${b}||${a}`].bWins.push(eventInfo);
+          }
         }else if(pb < pa){
           // Rider B has better position (lower number)
           pair[`${a}||${b}`].bAhead++;
           pair[`${b}||${a}`].aAhead++;
+          if(eventInfo){
+            pairDetails[`${a}||${b}`].bWins.push(eventInfo);
+            pairDetails[`${b}||${a}`].aWins.push(eventInfo);
+          }
         }
         // Removed tie tracking - if pa === pb, we simply don't count it
       }
     }
   }
 
-  return { byRider, podium, bestPos, participation, pair };
+  return { byRider, podium, bestPos, participation, pair, pairDetails };
 }
 
 function riderCard(name, meta, metrics){
@@ -332,16 +469,35 @@ function riderCard(name, meta, metrics){
 
 function compareMiddle(a, b, metrics){
   const s = metrics.pair[`${a}||${b}`] || { shared:0, aAhead:0, bAhead:0 };
+  const details = metrics.pairDetails[`${a}||${b}`] || { sharedEvents: [], aWins: [], bWins: [] };
+  
+  // Create clickable pills
+  const sharedPill = el("div", { class:"pill pill--wide pill--clickable" }, `Samen in uitslag: ${s.shared}`);
+  const aPill = el("div", { class:"pill pill--wide pill--clickable" }, `Winst ${a.split(" ")[0]}: ${s.aAhead}`);
+  const bPill = el("div", { class:"pill pill--wide pill--clickable" }, `Winst ${b.split(" ")[0]}: ${s.bAhead}`);
+  
+  // Add click handlers
+  sharedPill.addEventListener("click", () => {
+    showSharedEventsModal(details.sharedEvents, a, b);
+  });
+  
+  aPill.addEventListener("click", () => {
+    showWinsModal(details.aWins, a, b);
+  });
+  
+  bPill.addEventListener("click", () => {
+    showWinsModal(details.bWins, b, a);
+  });
+  
   return el("div", { class:"hmid" }, [
     el("div", { class:"hmid__title" }, "Vergelijking"),
     el("div", { class:"hmid__row" }, [
-      el("div", { class:"pill pill--wide" }, `Samen in uitslag: ${s.shared}`),
-      el("div", { class:"pill pill--wide" }, `Winst ${a.split(" ")[0]}: ${s.aAhead}`),
-      el("div", { class:"pill pill--wide" }, `Winst ${b.split(" ")[0]}: ${s.bAhead}`),
-      // Removed: Gelijk pill
+      sharedPill,
+      aPill,
+      bPill
     ]),
     el("div", { class:"muted", style:"margin-top:10px" },
-      "‘Winst’ = vaker een betere positie (lager pos-getal) binnen dezelfde uitslag."
+      "'Winst' = vaker een betere positie (lager pos-getal) binnen dezelfde uitslag. Klik op een resultaat voor details."
     )
   ]);
 }

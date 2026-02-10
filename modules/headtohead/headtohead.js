@@ -690,7 +690,7 @@ export async function mountHeadToHead(root){
         el("div", { class:"chipRow" }, tournaments.map(t =>
           chip(t.label, tSet.has(t.key), ()=>{
             normalizeSetToggle(tSet, t.key);
-            renderResults();
+            render(); // Re-render to update chip states
           })
         ))
       ]),
@@ -701,7 +701,7 @@ export async function mountHeadToHead(root){
         el("div", { class:"chipRow" }, distances.map(d =>
           chip(d.label, dSet.has(d.key), ()=>{
             normalizeSetToggle(dSet, d.key);
-            renderResults();
+            render(); // Re-render to update chip states
           })
         ))
       ]),
@@ -712,7 +712,7 @@ export async function mountHeadToHead(root){
         el("div", { class:"chipRow" }, seasons.slice().sort((a,b)=>b-a).map(y =>
           chip(String(y), ySet.has(y), ()=>{
             normalizeSetToggle(ySet, y);
-            renderResults();
+            render(); // Re-render to update chip states
           })
         ))
       ])

@@ -157,8 +157,20 @@ function seasonsMultiDropdown({ allSeasons, selectedSet, onChange }){
 }
 
 function buildEventKey(r){
-  const d = r.dateISO ? r.dateISO.slice(0,10) : "";
-  return [r.tournamentShort, r.season, r.distance, r.runKey, d, r.locatie].join("|");
+  // Unique event = Column F + H + I + J + K
+  // F = Wedstrijd (tournament)
+  // H = Afstand (distance)
+  // I = Datum (date)
+  // J = Seizoen (season)
+  // K = Sekse (sex)
+  const date = r.dateISO ? r.dateISO.slice(0,10) : "";
+  return [
+    r.wedstrijdRaw || r.tournament,  // Column F
+    r.afstandRaw || r.distance,       // Column H
+    date,                              // Column I
+    r.season,                          // Column J
+    r.sekseRaw || r.sex               // Column K
+  ].join("|");
 }
 
 function isEligibleRun(r){
@@ -218,10 +230,17 @@ function computeMetrics(filteredRows, riders){
       if(!p) continue;
       if(bestPos[name] == null || p < bestPos[name]) bestPos[name] = p;
 
-      // podium: only pos 1-3
-      if(p === 1) podium[name].gold++;
-      if(p === 2) podium[name].silver++;
-      if(p === 3) podium[name].bronze++;
+      // Podium: BOTH conditions must be met:
+      // 1. Column B (pos) = 1, 2, or 3
+      // 2. Column A (run) = "Final A" OR "Eindklassement"
+      const runKey = String(rr.runKey || "").toLowerCase();
+      const isPodiumRun = runKey === "final a" || runKey === "eindklassement";
+      
+      if(isPodiumRun){
+        if(p === 1) podium[name].gold++;
+        if(p === 2) podium[name].silver++;
+        if(p === 3) podium[name].bronze++;
+      }
     }
 
     // participation: unique tournamentShort + season, and keep set of distances per event
@@ -245,7 +264,7 @@ function computeMetrics(filteredRows, riders){
     if(!events.has(key)) events.set(key, new Map());
     const mp = events.get(key);
     const p = Number(r.pos);
-    if(!p) return;
+    if(!p) continue; // Skip if no valid position (was "return" - bug fixed)
     const prev = mp.get(r.skaterName);
     // keep best (min pos) if duplicates exist
     if(prev == null || p < prev) mp.set(r.skaterName, p);
@@ -257,7 +276,8 @@ function computeMetrics(filteredRows, riders){
     for(let j=0;j<riders.length;j++){
       if(i===j) continue;
       const a=riders[i], b=riders[j];
-      pair[`${a}||${b}`] = { shared:0, aAhead:0, bAhead:0, ties:0 };
+      // Removed "ties" - no longer tracked
+      pair[`${a}||${b}`] = { shared:0, aAhead:0, bAhead:0 };
     }
   }
 
@@ -268,19 +288,21 @@ function computeMetrics(filteredRows, riders){
         if(!mp.has(a) || !mp.has(b)) continue;
         const pa=mp.get(a), pb=mp.get(b);
 
+        // Samen in uitslag: both riders present
         pair[`${a}||${b}`].shared++;
         pair[`${b}||${a}`].shared++;
 
+        // Winst: lower number (better position) wins
         if(pa < pb){
+          // Rider A has better position (lower number)
           pair[`${a}||${b}`].aAhead++;
           pair[`${b}||${a}`].bAhead++;
         }else if(pb < pa){
+          // Rider B has better position (lower number)
           pair[`${a}||${b}`].bAhead++;
           pair[`${b}||${a}`].aAhead++;
-        }else{
-          pair[`${a}||${b}`].ties++;
-          pair[`${b}||${a}`].ties++;
         }
+        // Removed tie tracking - if pa === pb, we simply don't count it
       }
     }
   }
@@ -309,14 +331,14 @@ function riderCard(name, meta, metrics){
 }
 
 function compareMiddle(a, b, metrics){
-  const s = metrics.pair[`${a}||${b}`] || { shared:0, aAhead:0, bAhead:0, ties:0 };
+  const s = metrics.pair[`${a}||${b}`] || { shared:0, aAhead:0, bAhead:0 };
   return el("div", { class:"hmid" }, [
     el("div", { class:"hmid__title" }, "Vergelijking"),
     el("div", { class:"hmid__row" }, [
       el("div", { class:"pill pill--wide" }, `Samen in uitslag: ${s.shared}`),
       el("div", { class:"pill pill--wide" }, `Winst ${a.split(" ")[0]}: ${s.aAhead}`),
       el("div", { class:"pill pill--wide" }, `Winst ${b.split(" ")[0]}: ${s.bAhead}`),
-      el("div", { class:"pill pill--wide" }, `Gelijk: ${s.ties}`)
+      // Removed: Gelijk pill
     ]),
     el("div", { class:"muted", style:"margin-top:10px" },
       "‘Winst’ = vaker een betere positie (lager pos-getal) binnen dezelfde uitslag."

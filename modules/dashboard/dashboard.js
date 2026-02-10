@@ -377,16 +377,17 @@ export async function mountDashboard(root){
       filterSection.appendChild(msLocatie);
       filterSection.appendChild(msNat);
       filterSection.appendChild(msName);
-      filterSection.appendChild(el("div", { class:"pivotActions" }, 
+      const actionsDiv = el("div", { class:"pivotActions" }, [
         resetBtn, 
         el("button", { class:"btn btn--ghost btn--sm", type:"button", onclick:()=>router.go("home") }, "Terug naar menu")
-      ));
+      ]);
+      filterSection.appendChild(actionsDiv);
     }
     
     renderTable();
   });
 
-  const filtersGrid = el("div", { class:"pivotFilters" },
+  const filtersGrid = el("div", { class:"pivotFilters" }, [
     msSex,
     msTournament,
     msSeason,
@@ -394,11 +395,11 @@ export async function mountDashboard(root){
     msLocatie,
     msNat,
     msName,
-    el("div", { class:"pivotActions" }, 
+    el("div", { class:"pivotActions" }, [
       resetBtn, 
       el("button", { class:"btn btn--ghost btn--sm", type:"button", onclick:()=>router.go("home") }, "Terug naar menu")
-    )
-  );
+    ])
+  ]);
 
   const filtersSummary = el("div", { class:"pivotSummary" });
   

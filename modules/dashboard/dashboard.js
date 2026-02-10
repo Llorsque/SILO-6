@@ -7,83 +7,15 @@ function normalizeSpaces(s){
   return String(s ?? "").replace(/\s+/g, " ").trim();
 }
 
-function multiSelectDropdown({ label, options, selectedSet, onChange }){
-  const wrap = el("div", { class:"msel" });
-  const btn = el("button", { type:"button", class:"btn btn--sm msel__btn" }, label);
-  const panel = el("div", { class:"msel__panel" });
-  let open = false;
+function normalizeForComparison(s){
+  // Normalize for case-insensitive comparison
+  return normalizeSpaces(s).toLowerCase();
+}
 
-  function updateLabel(){
-    const n = selectedSet.size;
-    btn.textContent = n ? `${label} (${n})` : label;
-    // Add glow effect when filters are active
-    if(n > 0){
-      btn.classList.add("msel__btn--active");
-    }else{
-      btn.classList.remove("msel__btn--active");
-    }
-  }
-
-  function render(){
-    clear(panel);
-    
-    const header = el("div", { class:"msel__head" }, [
-      el("div", { class:"muted" }, `Selecteer ${label.toLowerCase()}`),
-      el("button", { type:"button", class:"btn btn--sm", onclick:()=>{
-        if(selectedSet.size === options.length){
-          selectedSet.clear();
-        }else{
-          selectedSet.clear();
-          options.forEach(opt => selectedSet.add(opt));
-        }
-        updateLabel();
-        render();
-        onChange && onChange();
-      }}, selectedSet.size === options.length ? "Deselecteer alles" : "Selecteer alles")
-    ]);
-    panel.appendChild(header);
-
-    const list = el("div", { class:"msel__list" });
-    for(const opt of options){
-      const row = el("label", { class:"msel__row" });
-      const cb = el("input", { type:"checkbox" });
-      cb.checked = selectedSet.has(opt);
-      cb.addEventListener("change", ()=>{
-        if(cb.checked){
-          selectedSet.add(opt);
-        }else{
-          selectedSet.delete(opt);
-        }
-        updateLabel();
-        onChange && onChange();
-      });
-      row.appendChild(cb);
-      row.appendChild(el("span", {}, String(opt)));
-      list.appendChild(row);
-    }
-    panel.appendChild(list);
-  }
-
-  function setOpen(v){
-    open = v;
-    if(open){
-      render();
-      panel.classList.add("msel__panel--open");
-    }else{
-      panel.classList.remove("msel__panel--open");
-    }
-  }
-
-  btn.addEventListener("click", ()=> setOpen(!open));
-
-  const onDocClick = (e)=>{ if(!wrap.contains(e.target)) setOpen(false); };
-  document.addEventListener("click", onDocClick);
-  wrap.__cleanup = () => document.removeEventListener("click", onDocClick);
-
-  wrap.appendChild(btn);
-  wrap.appendChild(panel);
-  updateLabel();
-  return wrap;
+function chip(label, active, onClick){
+  const b = el("button", { type:"button", class: active ? "chip chip--on" : "chip" }, label);
+  b.addEventListener("click", onClick);
+  return b;
 }
 
 function safeSeason(r){
@@ -167,7 +99,7 @@ export async function mountDashboard(root){
     return;
   }
 
-  // State: multi-select Sets instead of single values
+  // State: Sets with normalized (lowercase) values for case-insensitive matching
   const state = {
     sex: new Set(),
     tournament: new Set(),
@@ -178,26 +110,37 @@ export async function mountDashboard(root){
     name: new Set()
   };
 
+  // Get unique options with case-insensitive deduplication
+  function getUniqueOptions(results, keyFn){
+    const map = new Map(); // normalized -> display value
+    for(const r of results){
+      const v = keyFn(r);
+      const s = normalizeSpaces(v);
+      if(!s) continue;
+      const key = normalizeForComparison(s);
+      if(!map.has(key)) map.set(key, s);
+    }
+    return Array.from(map.values()).sort((a,b)=> a.localeCompare(b, "nl"));
+  }
+
   const options = {
-    sex: getOptions(resultsAll, r=>r.sekseRaw || r.sex),
-    tournament: getOptions(resultsAll, r=>r.wedstrijdRaw || r.tournament),
+    sex: getUniqueOptions(resultsAll, r=>r.sekseRaw || r.sex),
+    tournament: getUniqueOptions(resultsAll, r=>r.wedstrijdRaw || r.tournament),
     season: getSeasonOptions(resultsAll),
-    distance: getOptions(resultsAll, r=>r.afstandRaw || r.distance),
-    locatie: getOptions(resultsAll, r=>r.locatie),
-    nat: getOptions(resultsAll, r=>r.nat),
-    name: getOptions(resultsAll, r=>r.skaterName || r.nameRaw)
+    distance: getUniqueOptions(resultsAll, r=>r.afstandRaw || r.distance),
+    locatie: getUniqueOptions(resultsAll, r=>r.locatie),
+    nat: getUniqueOptions(resultsAll, r=>r.nat),
+    name: getUniqueOptions(resultsAll, r=>r.skaterName || r.nameRaw)
   };
 
-  const cleanupFns = [];
-
   function pass(r){
-    // Multi-select logic: if Set is not empty, value must be in Set
+    // Case-insensitive matching for all filters
     if(state.sex.size > 0){
-      const v = normalizeSpaces(r.sekseRaw || r.sex);
+      const v = normalizeForComparison(r.sekseRaw || r.sex);
       if(!state.sex.has(v)) return false;
     }
     if(state.tournament.size > 0){
-      const v = normalizeSpaces(r.wedstrijdRaw || r.tournament);
+      const v = normalizeForComparison(r.wedstrijdRaw || r.tournament);
       if(!state.tournament.has(v)) return false;
     }
     if(state.season.size > 0){
@@ -205,20 +148,19 @@ export async function mountDashboard(root){
       if(!Number.isFinite(y) || !state.season.has(y)) return false;
     }
     if(state.distance.size > 0){
-      const v = normalizeSpaces(r.afstandRaw || r.distance);
+      const v = normalizeForComparison(r.afstandRaw || r.distance);
       if(!state.distance.has(v)) return false;
     }
     if(state.locatie.size > 0){
-      const v = normalizeSpaces(r.locatie);
+      const v = normalizeForComparison(r.locatie);
       if(!state.locatie.has(v)) return false;
     }
     if(state.nat.size > 0){
-      const v = normalizeSpaces(r.nat).toUpperCase();
-      const matches = Array.from(state.nat).some(n => normalizeSpaces(n).toUpperCase() === v);
-      if(!matches) return false;
+      const v = normalizeForComparison(r.nat);
+      if(!state.nat.has(v)) return false;
     }
     if(state.name.size > 0){
-      const v = normalizeSpaces(r.skaterName || r.nameRaw);
+      const v = normalizeForComparison(r.skaterName || r.nameRaw);
       if(!state.name.has(v)) return false;
     }
     return true;
@@ -227,22 +169,18 @@ export async function mountDashboard(root){
   const tableWrap = el("div", { class:"pivotTableWrap" });
   const countEl = el("div", { class:"pivotCount" }, "");
 
-  function activeFiltersSummary(){
-    const parts = [];
-    if(state.sex.size) parts.push(`Sekse: ${Array.from(state.sex).join(", ")}`);
-    if(state.tournament.size) parts.push(`Wedstrijd: ${Array.from(state.tournament).join(", ")}`);
-    if(state.season.size) parts.push(`Seizoen: ${Array.from(state.season).sort((a,b)=>b-a).join(", ")}`);
-    if(state.distance.size) parts.push(`Afstand: ${Array.from(state.distance).join(", ")}`);
-    if(state.locatie.size) parts.push(`Locatie: ${Array.from(state.locatie).join(", ")}`);
-    if(state.nat.size) parts.push(`Nationaliteit: ${Array.from(state.nat).join(", ")}`);
-    if(state.name.size) parts.push(`Naam: ${Array.from(state.name).join(", ")}`);
-    return parts.length > 0 ? parts.join(" • ") : "Geen filters actief";
+  function toggleFilter(set, value){
+    const normalized = typeof value === 'number' ? value : normalizeForComparison(value);
+    if(set.has(normalized)){
+      set.delete(normalized);
+    }else{
+      set.add(normalized);
+    }
   }
 
   function renderTable(){
     clear(tableWrap);
     
-    // Check if any filters are active
     if(!hasAnyFilters(state)){
       countEl.textContent = "Selecteer minimaal één filter om resultaten te zien";
       tableWrap.appendChild(el("div", { class:"notice", style:"margin-top:12px" },
@@ -299,133 +237,157 @@ export async function mountDashboard(root){
     tableWrap.appendChild(tbl);
   }
 
-  // Multi-select dropdowns
-  const msSex = multiSelectDropdown({
-    label: "Sekse",
-    options: options.sex,
-    selectedSet: state.sex,
-    onChange: renderTable
-  });
-  cleanupFns.push(msSex.__cleanup || (()=>{}));
+  function renderFilters(){
+    clear(root);
 
-  const msTournament = multiSelectDropdown({
-    label: "Wedstrijd",
-    options: options.tournament,
-    selectedSet: state.tournament,
-    onChange: renderTable
-  });
-  cleanupFns.push(msTournament.__cleanup || (()=>{}));
+    const filterSections = [];
 
-  const msSeason = multiSelectDropdown({
-    label: "Seizoen",
-    options: options.season,
-    selectedSet: state.season,
-    onChange: renderTable
-  });
-  cleanupFns.push(msSeason.__cleanup || (()=>{}));
+    // Sekse filter
+    filterSections.push(
+      el("div", { class:"filterSection" }, [
+        el("div", { class:"filterSection__label" }, "Sekse"),
+        el("div", { class:"chipRow" }, 
+          options.sex.map(opt => 
+            chip(opt, state.sex.has(normalizeForComparison(opt)), ()=>{
+              toggleFilter(state.sex, opt);
+              renderTable();
+              renderFilters();
+            })
+          )
+        )
+      ])
+    );
 
-  const msDistance = multiSelectDropdown({
-    label: "Afstand",
-    options: options.distance,
-    selectedSet: state.distance,
-    onChange: renderTable
-  });
-  cleanupFns.push(msDistance.__cleanup || (()=>{}));
+    // Wedstrijd filter
+    filterSections.push(
+      el("div", { class:"filterSection" }, [
+        el("div", { class:"filterSection__label" }, "Wedstrijd"),
+        el("div", { class:"chipRow" }, 
+          options.tournament.map(opt => 
+            chip(opt, state.tournament.has(normalizeForComparison(opt)), ()=>{
+              toggleFilter(state.tournament, opt);
+              renderTable();
+              renderFilters();
+            })
+          )
+        )
+      ])
+    );
 
-  const msLocatie = multiSelectDropdown({
-    label: "Locatie",
-    options: options.locatie,
-    selectedSet: state.locatie,
-    onChange: renderTable
-  });
-  cleanupFns.push(msLocatie.__cleanup || (()=>{}));
+    // Seizoen filter
+    filterSections.push(
+      el("div", { class:"filterSection" }, [
+        el("div", { class:"filterSection__label" }, "Seizoen"),
+        el("div", { class:"chipRow" }, 
+          options.season.map(opt => 
+            chip(String(opt), state.season.has(opt), ()=>{
+              toggleFilter(state.season, opt);
+              renderTable();
+              renderFilters();
+            })
+          )
+        )
+      ])
+    );
 
-  const msNat = multiSelectDropdown({
-    label: "Nationaliteit",
-    options: options.nat,
-    selectedSet: state.nat,
-    onChange: renderTable
-  });
-  cleanupFns.push(msNat.__cleanup || (()=>{}));
+    // Afstand filter
+    filterSections.push(
+      el("div", { class:"filterSection" }, [
+        el("div", { class:"filterSection__label" }, "Afstand"),
+        el("div", { class:"chipRow" }, 
+          options.distance.map(opt => 
+            chip(opt, state.distance.has(normalizeForComparison(opt)), ()=>{
+              toggleFilter(state.distance, opt);
+              renderTable();
+              renderFilters();
+            })
+          )
+        )
+      ])
+    );
 
-  const msName = multiSelectDropdown({
-    label: "Naam",
-    options: options.name,
-    selectedSet: state.name,
-    onChange: renderTable
-  });
-  cleanupFns.push(msName.__cleanup || (()=>{}));
+    // Locatie filter
+    filterSections.push(
+      el("div", { class:"filterSection" }, [
+        el("div", { class:"filterSection__label" }, "Locatie"),
+        el("div", { class:"chipRow" }, 
+          options.locatie.map(opt => 
+            chip(opt, state.locatie.has(normalizeForComparison(opt)), ()=>{
+              toggleFilter(state.locatie, opt);
+              renderTable();
+              renderFilters();
+            })
+          )
+        )
+      ])
+    );
 
-  const resetBtn = el("button", { class:"btn btn--sm", type:"button" }, "Reset alle filters");
-  resetBtn.addEventListener("click", ()=>{
-    state.sex.clear();
-    state.tournament.clear();
-    state.season.clear();
-    state.distance.clear();
-    state.locatie.clear();
-    state.nat.clear();
-    state.name.clear();
-    
-    // Re-render all dropdowns to update their labels
-    const filterSection = root.querySelector(".pivotFilters");
-    if(filterSection){
-      clear(filterSection);
-      filterSection.appendChild(msSex);
-      filterSection.appendChild(msTournament);
-      filterSection.appendChild(msSeason);
-      filterSection.appendChild(msDistance);
-      filterSection.appendChild(msLocatie);
-      filterSection.appendChild(msNat);
-      filterSection.appendChild(msName);
-      const actionsDiv = el("div", { class:"pivotActions" }, [
-        resetBtn, 
+    // Nationaliteit filter
+    filterSections.push(
+      el("div", { class:"filterSection" }, [
+        el("div", { class:"filterSection__label" }, "Nationaliteit"),
+        el("div", { class:"chipRow" }, 
+          options.nat.map(opt => 
+            chip(opt, state.nat.has(normalizeForComparison(opt)), ()=>{
+              toggleFilter(state.nat, opt);
+              renderTable();
+              renderFilters();
+            })
+          )
+        )
+      ])
+    );
+
+    // Naam filter
+    filterSections.push(
+      el("div", { class:"filterSection" }, [
+        el("div", { class:"filterSection__label" }, "Naam"),
+        el("div", { class:"chipRow" }, 
+          options.name.map(opt => 
+            chip(opt, state.name.has(normalizeForComparison(opt)), ()=>{
+              toggleFilter(state.name, opt);
+              renderTable();
+              renderFilters();
+            })
+          )
+        )
+      ])
+    );
+
+    const resetBtn = el("button", { class:"btn btn--sm", type:"button" }, "Reset alle filters");
+    resetBtn.addEventListener("click", ()=>{
+      state.sex.clear();
+      state.tournament.clear();
+      state.season.clear();
+      state.distance.clear();
+      state.locatie.clear();
+      state.nat.clear();
+      state.name.clear();
+      renderTable();
+      renderFilters();
+    });
+
+    const filtersWrap = el("div", { class:"pivotFilters" }, [
+      ...filterSections,
+      el("div", { class:"pivotActions" }, [
+        resetBtn,
         el("button", { class:"btn btn--ghost btn--sm", type:"button", onclick:()=>router.go("home") }, "Terug naar menu")
-      ]);
-      filterSection.appendChild(actionsDiv);
-    }
-    
-    renderTable();
-  });
+      ])
+    ]);
 
-  const filtersGrid = el("div", { class:"pivotFilters" }, [
-    msSex,
-    msTournament,
-    msSeason,
-    msDistance,
-    msLocatie,
-    msNat,
-    msName,
-    el("div", { class:"pivotActions" }, [
-      resetBtn, 
-      el("button", { class:"btn btn--ghost btn--sm", type:"button", onclick:()=>router.go("home") }, "Terug naar menu")
-    ])
-  ]);
+    const card = sectionCard({
+      title:"Sebastiaans Draaitabel",
+      subtitle:"Klik op filteropties om ze aan/uit te zetten (zoals Excel draaitabel). Meerdere selecties mogelijk. Sortering: nieuwste seizoen bovenaan.",
+      children:[
+        filtersWrap,
+        countEl,
+        tableWrap
+      ]
+    });
 
-  const filtersSummary = el("div", { class:"pivotSummary" });
-  
-  function updateSummary(){
-    filtersSummary.textContent = activeFiltersSummary();
+    root.appendChild(card);
   }
-  
-  // Override renderTable to also update summary
-  const originalRenderTable = renderTable;
-  renderTable = function(){
-    originalRenderTable();
-    updateSummary();
-  };
 
-  const card = sectionCard({
-    title:"Sebastiaans Draaitabel",
-    subtitle:"Selecteer filters om resultaten te zien. Meerdere waarden per filter zijn mogelijk. Sortering is altijd nieuwste seizoen bovenaan.",
-    children:[
-      filtersGrid,
-      filtersSummary,
-      countEl,
-      tableWrap
-    ]
-  });
-
-  root.appendChild(card);
-  updateSummary();
+  renderFilters();
   renderTable();
 }

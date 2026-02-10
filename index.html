@@ -10,10 +10,14 @@
   <header class="topbar">
     <div class="brand">
       <div class="brand__name">SILO</div>
-      <div class="brand__tag">Sebastiaan’s Information Layer &amp; Orchestrationsystem</div>
+      <div class="brand__tag">Sebastiaan's Information Layer &amp; Orchestrationsystem</div>
     </div>
 
     <div class="topbar__actions">
+      <div id="userInfo" style="display:flex; align-items:center; gap:12px; margin-right:8px;">
+        <span style="font-size:13px; font-weight:700; color:rgba(82,232,232,1);" id="currentUser"></span>
+        <button id="btnLogout" class="btn btn--ghost" type="button" style="display:none;">Uitloggen</button>
+      </div>
       <button id="btnGoHome" class="btn" type="button">Menu</button>
       <button id="btnGoSettings" class="btn btn--ghost" type="button" title="Instellingen">⚙</button>
     </div>

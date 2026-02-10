@@ -2,6 +2,7 @@ import { router } from "./router.js";
 import { el, clear } from "./dom.js";
 import { unloadAllModuleCss, ensureModuleCss } from "./module_css.js";
 
+import { mountLogin, isLoggedIn, getCurrentUser, logout } from "../modules/login/login.js";
 import { mountHome } from "../modules/home/home.js";
 import { mountDashboard } from "../modules/dashboard/dashboard.js";
 import { mountFilters } from "../modules/filters/filters.js";
@@ -12,6 +13,24 @@ import { mountSettings } from "../modules/settings/settings.js";
 import { mountFinalPresentation } from "../modules/finalpresentation/finalpresentation.js";
 
 const appRoot = document.getElementById("appRoot");
+
+// Set up authentication guard
+router.setAuthGuard(isLoggedIn);
+
+// Update user display
+function updateUserDisplay(){
+  const userDisplay = document.getElementById("currentUser");
+  const logoutBtn = document.getElementById("btnLogout");
+  
+  if(isLoggedIn()){
+    const username = getCurrentUser();
+    if(userDisplay) userDisplay.textContent = username || "User";
+    if(logoutBtn) logoutBtn.style.display = "block";
+  } else {
+    if(userDisplay) userDisplay.textContent = "";
+    if(logoutBtn) logoutBtn.style.display = "none";
+  }
+}
 
 function mountIntoShell(routeKey, mountFn){
   // Hard isolation rule: module changes must not affect other modules.
@@ -25,6 +44,8 @@ function mountIntoShell(routeKey, mountFn){
   clear(appRoot);
   const modRoot = el("div", { class: `mod mod--${routeKey}`, "data-module": routeKey });
   appRoot.appendChild(modRoot);
+  
+  updateUserDisplay();
 
   return mountFn(modRoot);
 }
@@ -53,6 +74,7 @@ function safeMount(mountFn, routeKey){
   };
 }
 
+router.register("login", safeMount(mountLogin, "login"));
 router.register("home", safeMount(mountHome, "home"));
 router.register("dashboard", safeMount(mountDashboard, "dashboard"));
 router.register("filters", safeMount(mountFilters, "filters"));
@@ -64,5 +86,7 @@ router.register("settings", safeMount(mountSettings, "settings"));
 
 document.getElementById("btnGoHome")?.addEventListener("click", () => router.go("home"));
 document.getElementById("btnGoSettings")?.addEventListener("click", () => router.go("settings"));
+document.getElementById("btnLogout")?.addEventListener("click", () => logout());
 
+updateUserDisplay();
 router.start();

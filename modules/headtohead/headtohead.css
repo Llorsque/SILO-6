@@ -104,6 +104,20 @@
 .mod--headtohead .msel__row{display:flex; align-items:center; gap:10px; cursor:pointer}
 .mod--headtohead .msel__row input{transform: translateY(1px)}
 
+/* Filter group styles */
+.mod--headtohead .filterGroup{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.mod--headtohead .filterLabel{
+  font-size:12px;
+  font-weight:900;
+  color:var(--muted);
+  letter-spacing:.02em;
+}
+
 /* Readability + click affordance */
 .mod--headtohead .hmid{
   background: rgba(10,14,24,.72);

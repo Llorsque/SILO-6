@@ -421,18 +421,22 @@ export async function mountHeadToHead(root){
   // State
   let riderCount = 2;
   const selectedRiders = Array(6).fill("");
-  const tSet = new Set(["OS","WK","WKJ","EK","WC","NK"]); // default all on
-  const dSet = new Set(["500m","1000m","1500m"]); // default all on
-  const ySet = new Set(); // empty = all
+  const tSet = new Set(); // EMPTY by default - no filters selected
+  const dSet = new Set(); // EMPTY by default - no filters selected
+  const ySet = new Set(); // EMPTY by default - no filters selected
   const cleanupFns = [];
 
   const resultsWrap = el("div", { class:"h2hWrap" });
 
   function activeFiltersSummary(){
-    const t = Array.from(tSet).map(k => (k==="WC" ? "WC/WT" : k)).join(", ");
-    const d = Array.from(dSet).join(", ");
-    const y = ySet.size ? Array.from(ySet).sort((a,b)=>b-a).join(", ") : "Alle";
-    return `Toernooi: ${t || "—"}  |  Afstand: ${d || "—"}  |  Seizoen: ${y}`;
+    const t = tSet.size ? Array.from(tSet).map(k => (k==="WC" ? "WC/WT" : k)).join(", ") : "Geen";
+    const d = dSet.size ? Array.from(dSet).join(", ") : "Geen";
+    const y = ySet.size ? Array.from(ySet).sort((a,b)=>b-a).join(", ") : "Geen";
+    return `Toernooi: ${t}  |  Afstand: ${d}  |  Seizoen: ${y}`;
+  }
+
+  function hasAnyFilters(){
+    return tSet.size > 0 || dSet.size > 0 || ySet.size > 0;
   }
 
   function renderResults(){
@@ -442,6 +446,14 @@ export async function mountHeadToHead(root){
     const missing = chosen.length < 2;
 
     resultsWrap.appendChild(el("div", { class:"muted" }, activeFiltersSummary()));
+
+    // Require at least one filter to be selected
+    if(!hasAnyFilters()){
+      resultsWrap.appendChild(el("div", { class:"notice", style:"margin-top:10px" },
+        "Selecteer minimaal één filter (Toernooi, Afstand of Seizoen) om resultaten te zien."
+      ));
+      return;
+    }
 
     if(missing){
       resultsWrap.appendChild(el("div", { class:"notice", style:"margin-top:10px" },
@@ -509,35 +521,46 @@ export async function mountHeadToHead(root){
       riderRow.appendChild(dd.wrap);
     }
 
-    // Filters
+    // Filters - clearly structured with labels
     const filters = el("div", { class:"filtersCard", style:"margin-top:12px" }, [
       el("div", { class:"filtersCard__head" }, [
-        el("div", {}, el("div", { class:"muted" }, "Filters")),
+        el("div", {}, el("div", { class:"muted" }, "Filters (selecteer minimaal één)")),
         el("div", { class:"muted" }, meta?.name ? `Dataset: ${meta.name}` : "")
       ]),
-      el("div", { class:"chipRow" }, tournaments.map(t =>
-        chip(t.label, tSet.has(t.key), ()=>{
-          normalizeSetToggle(tSet, t.key);
-          renderResults();
-        })
-      )),
-      el("div", { class:"chipRow", style:"margin-top:10px" }, distances.map(d =>
-        chip(d.label, dSet.has(d.key), ()=>{
-          normalizeSetToggle(dSet, d.key);
-          renderResults();
-        })
-      )),
-      el("div", { class:"h2hSeasonRow" }, [
-        seasonsMultiDropdown({
-          allSeasons: seasons.slice().sort((a,b)=>b-a),
-          selectedSet: ySet,
-          onChange: ()=> renderResults()
-        })
+      
+      // Wedstrijd filter
+      el("div", { class:"filterGroup", style:"margin-top:10px" }, [
+        el("div", { class:"filterLabel" }, "Wedstrijd"),
+        el("div", { class:"chipRow" }, tournaments.map(t =>
+          chip(t.label, tSet.has(t.key), ()=>{
+            normalizeSetToggle(tSet, t.key);
+            renderResults();
+          })
+        ))
+      ]),
+      
+      // Afstand filter
+      el("div", { class:"filterGroup", style:"margin-top:10px" }, [
+        el("div", { class:"filterLabel" }, "Afstand"),
+        el("div", { class:"chipRow" }, distances.map(d =>
+          chip(d.label, dSet.has(d.key), ()=>{
+            normalizeSetToggle(dSet, d.key);
+            renderResults();
+          })
+        ))
+      ]),
+      
+      // Seizoen filter
+      el("div", { class:"filterGroup", style:"margin-top:10px" }, [
+        el("div", { class:"filterLabel" }, "Seizoen"),
+        el("div", { class:"chipRow" }, seasons.slice().sort((a,b)=>b-a).map(y =>
+          chip(String(y), ySet.has(y), ()=>{
+            normalizeSetToggle(ySet, y);
+            renderResults();
+          })
+        ))
       ])
     ]);
-
-    // Ensure dropdown cleanup
-    cleanupFns.push(filters.querySelector(".msel").__cleanup || (()=>{}));
 
     topControls.appendChild(headerRow);
     topControls.appendChild(riderRow);

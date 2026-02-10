@@ -164,8 +164,12 @@ export async function mountDashboard(root){
   };
 
   const stateToernooi = {
-    // Will be populated later with toernooi-specific filters
-    // Placeholder for now
+    pos: new Set(),
+    nat: new Set(),
+    tournament: new Set(),
+    sex: new Set(),
+    distance: new Set(),
+    season: new Set()
   };
 
   function getCurrentState(){
@@ -195,9 +199,23 @@ export async function mountDashboard(root){
     name: getUniqueOptions(resultsAll, r=>r.skaterName || r.nameRaw)
   };
 
+  // Get unique positions for Toernooi filter
+  function getPositionOptions(results){
+    const set = new Set();
+    for(const r of results){
+      const pos = Number(r.pos);
+      if(Number.isFinite(pos) && pos > 0) set.add(pos);
+    }
+    return Array.from(set).sort((a,b)=>a-b); // ascending order
+  }
+
   const optionsToernooi = {
-    // Will be populated later with toernooi-specific options
-    // Placeholder for now
+    pos: getPositionOptions(resultsAll),
+    nat: getUniqueOptions(resultsAll, r=>r.nat),
+    tournament: getUniqueOptions(resultsAll, r=>r.wedstrijdRaw || r.tournament),
+    sex: getUniqueOptions(resultsAll, r=>r.sekseRaw || r.sex),
+    distance: getUniqueOptions(resultsAll, r=>r.afstandRaw || r.distance),
+    season: getSeasonOptions(resultsAll)
   };
 
   function getCurrentOptions(){
@@ -207,35 +225,64 @@ export async function mountDashboard(root){
   function pass(r){
     const state = getCurrentState();
     
-    // Case-insensitive matching for all filters
-    if(state.sex && state.sex.size > 0){
-      const v = normalizeForComparison(r.sekseRaw || r.sex);
-      if(!state.sex.has(v)) return false;
+    if(viewMode === "rijder"){
+      // Case-insensitive matching for all filters
+      if(state.sex && state.sex.size > 0){
+        const v = normalizeForComparison(r.sekseRaw || r.sex);
+        if(!state.sex.has(v)) return false;
+      }
+      if(state.tournament && state.tournament.size > 0){
+        const v = normalizeForComparison(r.wedstrijdRaw || r.tournament);
+        if(!state.tournament.has(v)) return false;
+      }
+      if(state.season && state.season.size > 0){
+        const y = Number(r.season);
+        if(!Number.isFinite(y) || !state.season.has(y)) return false;
+      }
+      if(state.distance && state.distance.size > 0){
+        const v = normalizeForComparison(r.afstandRaw || r.distance);
+        if(!state.distance.has(v)) return false;
+      }
+      if(state.locatie && state.locatie.size > 0){
+        const v = normalizeForComparison(r.locatie);
+        if(!state.locatie.has(v)) return false;
+      }
+      if(state.nat && state.nat.size > 0){
+        const v = normalizeForComparison(r.nat);
+        if(!state.nat.has(v)) return false;
+      }
+      if(state.name && state.name.size > 0){
+        const v = normalizeForComparison(r.skaterName || r.nameRaw);
+        if(!state.name.has(v)) return false;
+      }
+    } else if(viewMode === "toernooi"){
+      // Toernooi filter logic
+      if(state.pos && state.pos.size > 0){
+        const p = Number(r.pos);
+        if(!Number.isFinite(p) || !state.pos.has(p)) return false;
+      }
+      if(state.nat && state.nat.size > 0){
+        const v = normalizeForComparison(r.nat);
+        if(!state.nat.has(v)) return false;
+      }
+      if(state.tournament && state.tournament.size > 0){
+        const v = normalizeForComparison(r.wedstrijdRaw || r.tournament);
+        if(!state.tournament.has(v)) return false;
+      }
+      if(state.sex && state.sex.size > 0){
+        const v = normalizeForComparison(r.sekseRaw || r.sex);
+        if(!state.sex.has(v)) return false;
+      }
+      if(state.distance && state.distance.size > 0){
+        const v = normalizeForComparison(r.afstandRaw || r.distance);
+        if(!state.distance.has(v)) return false;
+      }
+      if(state.season && state.season.size > 0){
+        const y = Number(r.season);
+        if(!Number.isFinite(y) || !state.season.has(y)) return false;
+      }
     }
-    if(state.tournament && state.tournament.size > 0){
-      const v = normalizeForComparison(r.wedstrijdRaw || r.tournament);
-      if(!state.tournament.has(v)) return false;
-    }
-    if(state.season && state.season.size > 0){
-      const y = Number(r.season);
-      if(!Number.isFinite(y) || !state.season.has(y)) return false;
-    }
-    if(state.distance && state.distance.size > 0){
-      const v = normalizeForComparison(r.afstandRaw || r.distance);
-      if(!state.distance.has(v)) return false;
-    }
-    if(state.locatie && state.locatie.size > 0){
-      const v = normalizeForComparison(r.locatie);
-      if(!state.locatie.has(v)) return false;
-    }
-    if(state.nat && state.nat.size > 0){
-      const v = normalizeForComparison(r.nat);
-      if(!state.nat.has(v)) return false;
-    }
-    if(state.name && state.name.size > 0){
-      const v = normalizeForComparison(r.skaterName || r.nameRaw);
-      if(!state.name.has(v)) return false;
-    }
+    
     return true;
   }
 
@@ -275,13 +322,22 @@ export async function mountDashboard(root){
       }
     }
     
-    // For Toernooi view, will add logic later
+    // Check if any filters are active for Toernooi view
     if(viewMode === "toernooi"){
-      countEl.textContent = "Toernooi weergave - nog in ontwikkeling";
-      tableWrap.appendChild(el("div", { class:"notice", style:"margin-top:12px" },
-        "Toernooi draaitabel komt binnenkort beschikbaar."
-      ));
-      return;
+      const hasFilters = state.pos.size > 0 || 
+                        state.nat.size > 0 || 
+                        state.tournament.size > 0 || 
+                        state.sex.size > 0 || 
+                        state.distance.size > 0 || 
+                        state.season.size > 0;
+      
+      if(!hasFilters){
+        countEl.textContent = "Selecteer minimaal één filter om resultaten te zien";
+        tableWrap.appendChild(el("div", { class:"notice", style:"margin-top:12px" },
+          "Geen filters geselecteerd. Kies één of meer filters bovenaan om de draaitabel te vullen."
+        ));
+        return;
+      }
     }
 
     const rows = sortNewestFirst(resultsAll.filter(pass));
@@ -290,20 +346,12 @@ export async function mountDashboard(root){
     const tbl = el("table", { class:"pivotTable" });
     const thead = el("thead");
     const trh = el("tr");
-    const headers = [
-      "Run",
-      "Pos",
-      "Naam",
-      "Nat.",
-      "Opmerking",
-      "Wedstrijd",
-      "Locatie",
-      "Afstand",
-      "Datum",
-      "Seizoen",
-      "Sekse",
-      "Winnaar"
-    ];
+    
+    // Different headers based on view mode
+    const headers = viewMode === "rijder" 
+      ? ["Run", "Pos", "Naam", "Nat.", "Opmerking", "Wedstrijd", "Locatie", "Afstand", "Datum", "Seizoen", "Sekse", "Winnaar"]
+      : ["Datum", "Pos", "Opmerking", "Afstand", "Locatie", "Run", "Naam", "Nat."];
+    
     for(const h of headers) trh.appendChild(el("th", {}, h));
     thead.appendChild(trh);
     tbl.appendChild(thead);
@@ -311,20 +359,34 @@ export async function mountDashboard(root){
     const tbody = el("tbody");
     for(const r of rows){
       const tr = el("tr");
-      const cells = [
-        normalizeSpaces(r.runRaw),
-        normalizeSpaces(r.posRaw || r.pos),
-        normalizeSpaces(r.skaterName || r.nameRaw),
-        normalizeSpaces(r.nat),
-        normalizeSpaces(r.opmerking),
-        normalizeSpaces(r.wedstrijdRaw || r.tournament),
-        normalizeSpaces(r.locatie),
-        normalizeSpaces(r.afstandRaw || r.distance),
-        fmtDate(r.dateISO),
-        r.season ?? "",
-        normalizeSpaces(r.sekseRaw || r.sex),
-        normalizeSpaces(r.winnaarRaw)
-      ];
+      
+      // Different columns based on view mode
+      const cells = viewMode === "rijder"
+        ? [
+            normalizeSpaces(r.runRaw),
+            normalizeSpaces(r.posRaw || r.pos),
+            normalizeSpaces(r.skaterName || r.nameRaw),
+            normalizeSpaces(r.nat),
+            normalizeSpaces(r.opmerking),
+            normalizeSpaces(r.wedstrijdRaw || r.tournament),
+            normalizeSpaces(r.locatie),
+            normalizeSpaces(r.afstandRaw || r.distance),
+            fmtDate(r.dateISO),
+            r.season ?? "",
+            normalizeSpaces(r.sekseRaw || r.sex),
+            normalizeSpaces(r.winnaarRaw)
+          ]
+        : [
+            fmtDate(r.dateISO),
+            normalizeSpaces(r.posRaw || r.pos),
+            normalizeSpaces(r.opmerking),
+            normalizeSpaces(r.afstandRaw || r.distance),
+            normalizeSpaces(r.locatie),
+            normalizeSpaces(r.runRaw),
+            normalizeSpaces(r.skaterName || r.nameRaw),
+            normalizeSpaces(r.nat)
+          ];
+      
       for(const c of cells) tr.appendChild(el("td", {}, String(c ?? "")));
       tbody.appendChild(tr);
     }
@@ -467,15 +529,151 @@ export async function mountDashboard(root){
   }
 
   function renderFiltersToernooi(){
-    // Placeholder for toernooi filters - will be implemented later
-    return [
+    const state = stateToernooi;
+    const options = optionsToernooi;
+    const filterSections = [];
+
+    // Pos filter - button style (numbers 1-20 typically)
+    filterSections.push(
       el("div", { class:"filterSection" }, [
-        el("div", { class:"filterSection__label" }, "Toernooi Filters"),
-        el("div", { class:"filterSection__options" }, [
-          el("div", { class:"searchNoResults" }, "Filters volgen binnenkort...")
-        ])
+        el("div", { class:"filterSection__label" }, "Pos."),
+        el("div", { class:"filterSection__options" }, 
+          options.pos.slice(0, 30).map(opt => {
+            const isActive = state.pos.has(opt);
+            const btn = el("button", { 
+              type:"button", 
+              class: isActive ? "filterOption filterOption--active" : "filterOption"
+            }, String(opt));
+            btn.addEventListener("click", ()=>{
+              if(state.pos.has(opt)){
+                state.pos.delete(opt);
+              }else{
+                state.pos.add(opt);
+              }
+              renderTable();
+              renderFilters();
+            });
+            return btn;
+          })
+        )
       ])
-    ];
+    );
+
+    // Nat filter - button style
+    filterSections.push(
+      el("div", { class:"filterSection" }, [
+        el("div", { class:"filterSection__label" }, "Nat."),
+        el("div", { class:"filterSection__options" }, 
+          options.nat.map(opt => {
+            const isActive = state.nat.has(normalizeForComparison(opt));
+            const btn = el("button", { 
+              type:"button", 
+              class: isActive ? "filterOption filterOption--active" : "filterOption"
+            }, opt);
+            btn.addEventListener("click", ()=>{
+              toggleFilter(state.nat, opt);
+              renderTable();
+              renderFilters();
+            });
+            return btn;
+          })
+        )
+      ])
+    );
+
+    // Wedstrijd filter - button style
+    filterSections.push(
+      el("div", { class:"filterSection" }, [
+        el("div", { class:"filterSection__label" }, "Wedstrijd"),
+        el("div", { class:"filterSection__options" }, 
+          options.tournament.map(opt => {
+            const isActive = state.tournament.has(normalizeForComparison(opt));
+            const btn = el("button", { 
+              type:"button", 
+              class: isActive ? "filterOption filterOption--active" : "filterOption"
+            }, opt);
+            btn.addEventListener("click", ()=>{
+              toggleFilter(state.tournament, opt);
+              renderTable();
+              renderFilters();
+            });
+            return btn;
+          })
+        )
+      ])
+    );
+
+    // Sekse filter - button style
+    filterSections.push(
+      el("div", { class:"filterSection" }, [
+        el("div", { class:"filterSection__label" }, "Sekse"),
+        el("div", { class:"filterSection__options" }, 
+          options.sex.map(opt => {
+            const isActive = state.sex.has(normalizeForComparison(opt));
+            const btn = el("button", { 
+              type:"button", 
+              class: isActive ? "filterOption filterOption--active" : "filterOption"
+            }, opt);
+            btn.addEventListener("click", ()=>{
+              toggleFilter(state.sex, opt);
+              renderTable();
+              renderFilters();
+            });
+            return btn;
+          })
+        )
+      ])
+    );
+
+    // Afstand filter - button style
+    filterSections.push(
+      el("div", { class:"filterSection" }, [
+        el("div", { class:"filterSection__label" }, "Afstand"),
+        el("div", { class:"filterSection__options" }, 
+          options.distance.map(opt => {
+            const isActive = state.distance.has(normalizeForComparison(opt));
+            const btn = el("button", { 
+              type:"button", 
+              class: isActive ? "filterOption filterOption--active" : "filterOption"
+            }, opt);
+            btn.addEventListener("click", ()=>{
+              toggleFilter(state.distance, opt);
+              renderTable();
+              renderFilters();
+            });
+            return btn;
+          })
+        )
+      ])
+    );
+
+    // Seizoen filter - button style
+    filterSections.push(
+      el("div", { class:"filterSection" }, [
+        el("div", { class:"filterSection__label" }, "Seizoen"),
+        el("div", { class:"filterSection__options" }, 
+          options.season.map(opt => {
+            const isActive = state.season.has(opt);
+            const btn = el("button", { 
+              type:"button", 
+              class: isActive ? "filterOption filterOption--active" : "filterOption"
+            }, String(opt));
+            btn.addEventListener("click", ()=>{
+              if(state.season.has(opt)){
+                state.season.delete(opt);
+              }else{
+                state.season.add(opt);
+              }
+              renderTable();
+              renderFilters();
+            });
+            return btn;
+          })
+        )
+      ])
+    );
+
+    return filterSections;
   }
 
   function renderFilters(){
@@ -531,7 +729,7 @@ export async function mountDashboard(root){
 
     const subtitle = viewMode === "rijder" 
       ? "Rijder weergave: Klik op filteropties. Gebruik zoeken voor Locatie en Naam. Sortering: nieuwste seizoen bovenaan."
-      : "Toernooi weergave: Filters en draaitabel volgen binnenkort.";
+      : "Toernooi weergave: Klik op filteropties. Tabel toont: Datum, Pos, Opmerking, Afstand, Locatie, Run, Naam, Nat. Sortering: nieuwste seizoen bovenaan.";
 
     const card = sectionCard({
       title:"Sebastiaans Draaitabel",

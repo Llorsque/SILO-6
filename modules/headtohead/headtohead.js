@@ -80,8 +80,13 @@ function showSharedEventsModal(events, riderA, riderB){
 
 function showWinsModal(events, winner, loser){
   const rows = events.map(ev => {
-    const winnerPos = ev.riders[winner] || "—";
-    const loserPos = ev.riders[loser] || "—";
+    const winnerData = ev.riders[winner] || { pos: null, opmerking: null };
+    const loserData = ev.riders[loser] || { pos: null, opmerking: null };
+    
+    const winnerPos = winnerData.pos || "—";
+    const loserPos = loserData.pos || "—";
+    const winnerOpm = winnerData.opmerking;
+    const loserOpm = loserData.opmerking;
     
     return el("div", { class:"event-row-with-pos" }, [
       el("div", { class:"event-info" }, [
@@ -91,8 +96,8 @@ function showWinsModal(events, winner, loser){
         el("span", {}, String(ev.season || "—"))
       ]),
       el("div", { class:"event-positions" }, [
-        el("span", {}, `${winner}: ${winnerPos}`),
-        el("span", {}, `${loser}: ${loserPos}`)
+        el("span", {}, `${winner}: ${winnerPos}${winnerOpm ? ` (${winnerOpm})` : ""}`),
+        el("span", {}, `${loser}: ${loserPos}${loserOpm ? ` (${loserOpm})` : ""}`)
       ])
     ]);
   });
@@ -269,20 +274,28 @@ function buildEventKey(r){
   ].join("|");
 }
 
-function isEligibleRun(r){
-  // ONLY Final A - Eindklassement is EXCLUDED from Head-to-Head comparison
+function isEligibleRun(r, runFilterSet){
+  // If no run types selected in filter, exclude all
+  if(runFilterSet.size === 0) return false;
+  
+  // Always exclude "eindklassement"
   const rk = String(r.runKey || "").toLowerCase();
-  return rk === "final a";
+  if(rk === "eindklassement") return false;
+  
+  // Check if this run type is in the selected filter
+  const runRaw = String(r.runRaw || r.runKey || "").trim();
+  return runFilterSet.has(runRaw);
 }
 
 function filterRows(results, filters){
   const tSet = filters.tournaments;
   const dSet = filters.distances;
   const ySet = filters.seasons;
+  const rSet = filters.runs;
 
   return results.filter(r => {
     if(!r || !r.skaterName) return false;
-    if(!isEligibleRun(r)) return false;
+    if(!isEligibleRun(r, rSet)) return false;
 
     if(tSet.size && !tSet.has(r.tournamentShort)) return false;
     if(ySet.size && !ySet.has(r.season)) return false;
@@ -371,7 +384,7 @@ function computeMetrics(filteredRows, riders){
   }
 
   // Build detailed event list from filteredRows for modal display
-  const eventDetails = new Map(); // eventKey -> { tournament, distance, location, season, riders: {name: pos} }
+  const eventDetails = new Map(); // eventKey -> { tournament, distance, location, season, riders: {name: {pos, opmerking}} }
   for(const r of filteredRows){
     if(!riders.includes(r.skaterName)) continue;
     const key = buildEventKey(r);
@@ -385,7 +398,11 @@ function computeMetrics(filteredRows, riders){
       });
     }
     const p = Number(r.pos);
-    if(p) eventDetails.get(key).riders[r.skaterName] = p;
+    const opm = String(r.opmerking || "").trim();
+    eventDetails.get(key).riders[r.skaterName] = {
+      pos: p || null,
+      opmerking: opm && opm !== "-" ? opm : null
+    };
   }
 
   for(const mp of events.values()){
@@ -414,17 +431,42 @@ function computeMetrics(filteredRows, riders){
           pairDetails[`${b}||${a}`].sharedEvents.push(eventInfo);
         }
 
-        // Winst: lower number (better position) wins
-        if(pa < pb){
-          // Rider A has better position (lower number)
+        // Winst: Apply position comparison rules
+        // Rule 1: Number vs Number → lower wins
+        // Rule 2: Number vs Empty → number wins
+        // Rule 3: Empty vs Empty → no winner (tie)
+        
+        const hasA = pa && Number.isFinite(pa);
+        const hasB = pb && Number.isFinite(pb);
+        
+        if(hasA && hasB){
+          // Both have positions - lower number wins
+          if(pa < pb){
+            pair[`${a}||${b}`].aAhead++;
+            pair[`${b}||${a}`].bAhead++;
+            if(eventInfo){
+              pairDetails[`${a}||${b}`].aWins.push(eventInfo);
+              pairDetails[`${b}||${a}`].bWins.push(eventInfo);
+            }
+          }else if(pb < pa){
+            pair[`${a}||${b}`].bAhead++;
+            pair[`${b}||${a}`].aAhead++;
+            if(eventInfo){
+              pairDetails[`${a}||${b}`].bWins.push(eventInfo);
+              pairDetails[`${b}||${a}`].aWins.push(eventInfo);
+            }
+          }
+          // If pa === pb, it's a tie - don't count in wins
+        }else if(hasA && !hasB){
+          // A has position, B doesn't - A wins
           pair[`${a}||${b}`].aAhead++;
           pair[`${b}||${a}`].bAhead++;
           if(eventInfo){
             pairDetails[`${a}||${b}`].aWins.push(eventInfo);
             pairDetails[`${b}||${a}`].bWins.push(eventInfo);
           }
-        }else if(pb < pa){
-          // Rider B has better position (lower number)
+        }else if(!hasA && hasB){
+          // B has position, A doesn't - B wins
           pair[`${a}||${b}`].bAhead++;
           pair[`${b}||${a}`].aAhead++;
           if(eventInfo){
@@ -432,7 +474,7 @@ function computeMetrics(filteredRows, riders){
             pairDetails[`${b}||${a}`].aWins.push(eventInfo);
           }
         }
-        // If pa === pb (tie), don't count in either win category
+        // If neither has position - no winner
       }
     }
   }
@@ -447,7 +489,7 @@ function riderCard(name, meta, metrics){
 
   const lines = [];
   lines.push(el("div", { class:"h2" }, name));
-  lines.push(el("div", { class:"muted" }, "Podium (Final A only)"));
+  lines.push(el("div", { class:"muted" }, "Podium (geselecteerde runs)"));
   lines.push(el("div", { class:"hrow" }, [
     el("div", { class:"pill" }, `🥇 ${p.gold}`),
     el("div", { class:"pill" }, `🥈 ${p.silver}`),
@@ -553,6 +595,17 @@ export async function mountHeadToHead(root){
     .filter(Boolean));
 
   const seasons = uniqSorted(dataset.results.map(r => r.season).filter(Boolean));
+  
+  // Get unique run types from data, excluding "eindklassement"
+  const runTypes = uniqSorted(
+    dataset.results
+      .map(r => r.runRaw || r.runKey || "")
+      .filter(run => {
+        const normalized = String(run).toLowerCase().trim();
+        return normalized && normalized !== "eindklassement";
+      })
+  );
+  
   const tournaments = [
     { key:"OS", label:"OS" },
     { key:"WK", label:"WK" },
@@ -573,6 +626,7 @@ export async function mountHeadToHead(root){
   const tSet = new Set(); // EMPTY by default - no filters selected
   const dSet = new Set(); // EMPTY by default - no filters selected
   const ySet = new Set(); // EMPTY by default - no filters selected
+  const rSet = new Set(); // Run types - EMPTY by default
   const cleanupFns = [];
 
   const resultsWrap = el("div", { class:"h2hWrap" });
@@ -581,11 +635,12 @@ export async function mountHeadToHead(root){
     const t = tSet.size ? Array.from(tSet).map(k => (k==="WC" ? "WC/WT" : k)).join(", ") : "Geen";
     const d = dSet.size ? Array.from(dSet).join(", ") : "Geen";
     const y = ySet.size ? Array.from(ySet).sort((a,b)=>b-a).join(", ") : "Geen";
-    return `Toernooi: ${t}  |  Afstand: ${d}  |  Seizoen: ${y}`;
+    const r = rSet.size ? Array.from(rSet).join(", ") : "Geen";
+    return `Toernooi: ${t}  |  Afstand: ${d}  |  Seizoen: ${y}  |  Run: ${r}`;
   }
 
   function hasAnyFilters(){
-    return tSet.size > 0 || dSet.size > 0 || ySet.size > 0;
+    return tSet.size > 0 || dSet.size > 0 || ySet.size > 0 || rSet.size > 0;
   }
 
   function renderResults(){
@@ -599,7 +654,7 @@ export async function mountHeadToHead(root){
     // Require at least one filter to be selected
     if(!hasAnyFilters()){
       resultsWrap.appendChild(el("div", { class:"notice", style:"margin-top:10px" },
-        "Selecteer minimaal één filter (Toernooi, Afstand of Seizoen) om resultaten te zien."
+        "Selecteer minimaal één filter (Toernooi, Afstand, Seizoen of Run) om resultaten te zien."
       ));
       return;
     }
@@ -611,7 +666,7 @@ export async function mountHeadToHead(root){
       return;
     }
 
-    const filters = { tournaments: tSet, distances: dSet, seasons: ySet };
+    const filters = { tournaments: tSet, distances: dSet, seasons: ySet, runs: rSet };
     const filtered = filterRows(dataset.results, filters)
       .filter(r => chosen.includes(r.skaterName));
 
@@ -705,6 +760,17 @@ export async function mountHeadToHead(root){
         el("div", { class:"chipRow" }, seasons.slice().sort((a,b)=>b-a).map(y =>
           chip(String(y), ySet.has(y), ()=>{
             normalizeSetToggle(ySet, y);
+            render(); // Re-render to update chip states
+          })
+        ))
+      ]),
+      
+      // Run filter
+      el("div", { class:"filterGroup", style:"margin-top:10px" }, [
+        el("div", { class:"filterLabel" }, "Run"),
+        el("div", { class:"chipRow" }, runTypes.map(run =>
+          chip(run, rSet.has(run), ()=>{
+            normalizeSetToggle(rSet, run);
             render(); // Re-render to update chip states
           })
         ))

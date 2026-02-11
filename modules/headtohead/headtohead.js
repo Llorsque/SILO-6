@@ -363,11 +363,10 @@ function computeMetrics(filteredRows, riders){
     const key = buildEventKey(r);
     if(!events.has(key)) events.set(key, new Map());
     const mp = events.get(key);
-    const p = Number(r.pos);
-    if(!p) continue; // Skip if no valid position (was "return" - bug fixed)
+    const p = Number(r.pos) || null; // Store null if no valid position
     const prev = mp.get(r.skaterName);
-    // keep best (min pos) if duplicates exist
-    if(prev == null || p < prev) mp.set(r.skaterName, p);
+    // keep best (min pos) if duplicates exist, or set null if no position
+    if(prev == null || (p != null && p < prev)) mp.set(r.skaterName, p);
   }
 
   // pairwise stats with detailed event tracking

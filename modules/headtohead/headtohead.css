@@ -304,6 +304,157 @@
   white-space:nowrap;
 }
 
+/* Stats button */
+.btn-stats{
+  width:100%;
+  background:rgba(82,232,232,0.15);
+  border:1px solid rgba(82,232,232,0.4);
+  color:rgba(255,255,255,0.95);
+  padding:12px 16px;
+  border-radius:12px;
+  font-size:14px;
+  font-weight:900;
+  cursor:pointer;
+  transition:all 0.2s ease;
+}
+
+.btn-stats:hover{
+  background:rgba(82,232,232,0.25);
+  border-color:rgba(82,232,232,0.6);
+  box-shadow:0 0 12px rgba(82,232,232,0.3);
+}
+
+/* Stats modal content */
+.stats-modal-content{
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
+
+.stats-section{
+  background:rgba(255,255,255,0.02);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:12px;
+  padding:16px;
+}
+
+.stats-prediction{
+  background:rgba(82,232,232,0.08);
+  border-color:rgba(82,232,232,0.25);
+}
+
+.stats-heading{
+  font-size:15px;
+  font-weight:900;
+  color:rgba(82,232,232,1);
+  margin:0 0 12px 0;
+  letter-spacing:0.02em;
+}
+
+.stats-subheading{
+  font-size:13px;
+  font-weight:900;
+  color:rgba(255,255,255,0.7);
+  margin-bottom:8px;
+}
+
+.stats-row{
+  padding:6px 0;
+  font-size:14px;
+  line-height:1.5;
+}
+
+.stats-confidence{
+  margin-top:8px;
+  padding:8px 12px;
+  background:rgba(0,0,0,0.3);
+  border-radius:8px;
+  font-weight:900;
+  font-size:13px;
+}
+
+.stats-note{
+  font-size:12px;
+  color:rgba(255,255,255,0.6);
+  margin-top:4px;
+  font-style:italic;
+}
+
+/* Distance stats */
+.distance-stat{
+  margin-bottom:16px;
+}
+
+.distance-stat:last-child{
+  margin-bottom:0;
+}
+
+.distance-stat-header{
+  font-size:13px;
+  font-weight:900;
+  color:rgba(82,232,232,1);
+  margin-bottom:6px;
+}
+
+.distance-stat-bar{
+  display:flex;
+  height:32px;
+  background:rgba(0,0,0,0.3);
+  border-radius:8px;
+  overflow:hidden;
+  margin-bottom:4px;
+}
+
+.bar-item{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:900;
+  color:rgba(255,255,255,0.95);
+  transition:width 0.3s ease;
+}
+
+.bar-a{
+  background:rgba(82,232,232,0.6);
+}
+
+.bar-b{
+  background:rgba(255,165,0,0.6);
+}
+
+.distance-stat-detail{
+  font-size:12px;
+  color:rgba(255,255,255,0.7);
+  padding-left:4px;
+}
+
+/* Recent form */
+.recent-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.recent-record{
+  font-family:monospace;
+  font-weight:900;
+  font-size:14px;
+  letter-spacing:2px;
+  color:rgba(82,232,232,1);
+}
+
+.recent-percent{
+  color:rgba(255,255,255,0.7);
+  font-size:13px;
+}
+
+/* Prediction rows */
+.prediction-row{
+  padding:6px 0;
+  font-size:14px;
+}
+
 /* Readability + click affordance */
 .mod--headtohead .hmid{
   background: rgba(10,14,24,.72);

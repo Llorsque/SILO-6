@@ -24,6 +24,82 @@ function chip(label, active, onClick){
   return b;
 }
 
+// Stats calculation helpers
+function calculateStats(events, riderA, riderB){
+  const stats = {
+    total: events.length,
+    aWins: 0,
+    bWins: 0,
+    ties: 0,
+    byDistance: {},
+    recent: [],
+    positions: { a: [], b: [] }
+  };
+  
+  // Process each event
+  events.forEach((ev, idx) => {
+    const aData = ev.riders[riderA] || { pos: null };
+    const bData = ev.riders[riderB] || { pos: null };
+    const aPos = aData.pos;
+    const bPos = bData.pos;
+    
+    // Track positions for average calculation
+    if(aPos) stats.positions.a.push(aPos);
+    if(bPos) stats.positions.b.push(bPos);
+    
+    // Determine winner
+    const hasA = aPos && Number.isFinite(aPos);
+    const hasB = bPos && Number.isFinite(bPos);
+    let winner = null;
+    
+    if(hasA && hasB){
+      if(aPos < bPos) winner = 'a';
+      else if(bPos < aPos) winner = 'b';
+      else winner = 'tie';
+    }else if(hasA && !hasB){
+      winner = 'a';
+    }else if(!hasA && hasB){
+      winner = 'b';
+    }
+    
+    // Count overall
+    if(winner === 'a') stats.aWins++;
+    else if(winner === 'b') stats.bWins++;
+    else if(winner === 'tie') stats.ties++;
+    
+    // Count by distance
+    const dist = ev.distance || "Onbekend";
+    if(!stats.byDistance[dist]){
+      stats.byDistance[dist] = { total: 0, aWins: 0, bWins: 0, ties: 0 };
+    }
+    stats.byDistance[dist].total++;
+    if(winner === 'a') stats.byDistance[dist].aWins++;
+    else if(winner === 'b') stats.byDistance[dist].bWins++;
+    else if(winner === 'tie') stats.byDistance[dist].ties++;
+    
+    // Track recent (last 5)
+    if(idx >= events.length - 5){
+      stats.recent.push(winner);
+    }
+  });
+  
+  return stats;
+}
+
+function getConfidenceLevel(total){
+  if(total >= 15) return { level: "Hoog", emoji: "✓", color: "#52E8E8" };
+  if(total >= 8) return { level: "Medium", emoji: "⚠", color: "#FFA500" };
+  return { level: "Laag", emoji: "⚠", color: "#FF6B6B" };
+}
+
+function getPrediction(percentage, total){
+  if(total < 5) return "Onvoldoende data";
+  if(percentage > 65) return "Duidelijke favoriet";
+  if(percentage > 55) return "Lichte favoriet";
+  if(percentage >= 45) return "Evenwichtig";
+  return "Underdog";
+}
+
 function modal(title, content, onClose){
   const overlay = el("div", { class:"modal-overlay" });
   const box = el("div", { class:"modal-box" }, [
@@ -48,6 +124,165 @@ function modal(title, content, onClose){
   box.querySelector(".modal-close").addEventListener("click", close);
   
   return overlay;
+}
+
+function showStatsModal(events, riderA, riderB){
+  const stats = calculateStats(events, riderA, riderB);
+  const confidence = getConfidenceLevel(stats.total);
+  
+  // Calculate percentages
+  const aPercent = stats.total > 0 ? ((stats.aWins / stats.total) * 100).toFixed(1) : 0;
+  const bPercent = stats.total > 0 ? ((stats.bWins / stats.total) * 100).toFixed(1) : 0;
+  const tiePercent = stats.total > 0 ? ((stats.ties / stats.total) * 100).toFixed(1) : 0;
+  
+  // Calculate average positions
+  const avgA = stats.positions.a.length > 0 
+    ? (stats.positions.a.reduce((a,b) => a+b, 0) / stats.positions.a.length).toFixed(1)
+    : "—";
+  const avgB = stats.positions.b.length > 0
+    ? (stats.positions.b.reduce((a,b) => a+b, 0) / stats.positions.b.length).toFixed(1)
+    : "—";
+  
+  // Calculate consistency (standard deviation)
+  const calcStdDev = (arr) => {
+    if(arr.length < 2) return 0;
+    const mean = arr.reduce((a,b) => a+b, 0) / arr.length;
+    const variance = arr.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / arr.length;
+    return Math.sqrt(variance);
+  };
+  const stdDevA = calcStdDev(stats.positions.a).toFixed(1);
+  const stdDevB = calcStdDev(stats.positions.b).toFixed(1);
+  
+  // Build content sections
+  const sections = [];
+  
+  // Section 1: Overall stats
+  sections.push(el("div", { class:"stats-section" }, [
+    el("h3", { class:"stats-heading" }, "📊 ALGEMEEN"),
+    el("div", { class:"stats-row" }, `Totaal samen: ${stats.total} races`),
+    el("div", { class:"stats-row" }, `${riderA}: ${stats.aWins} wins (${aPercent}%)`),
+    el("div", { class:"stats-row" }, `${riderB}: ${stats.bWins} wins (${bPercent}%)`),
+    stats.ties > 0 ? el("div", { class:"stats-row" }, `Gelijk: ${stats.ties} (${tiePercent}%)`) : null,
+    el("div", { class:"stats-confidence", style:`color:${confidence.color}` }, 
+      `${confidence.emoji} Betrouwbaarheid: ${confidence.level}`)
+  ].filter(Boolean)));
+  
+  // Section 2: Distance breakdown
+  const distanceRows = Object.entries(stats.byDistance)
+    .sort((a, b) => b[1].total - a[1].total)
+    .map(([dist, data]) => {
+      const aP = ((data.aWins / data.total) * 100).toFixed(0);
+      const bP = ((data.bWins / data.total) * 100).toFixed(0);
+      const predA = getPrediction(parseFloat(aP), data.total);
+      const predB = getPrediction(parseFloat(bP), data.total);
+      
+      return el("div", { class:"distance-stat" }, [
+        el("div", { class:"distance-stat-header" }, `${dist} (${data.total} races)`),
+        el("div", { class:"distance-stat-bar" }, [
+          el("div", { class:"bar-item bar-a", style:`width:${aP}%` }, 
+            data.aWins > 0 ? `${riderA.split(" ")[0]}: ${aP}%` : ""),
+          el("div", { class:"bar-item bar-b", style:`width:${bP}%` }, 
+            data.bWins > 0 ? `${riderB.split(" ")[0]}: ${bP}%` : "")
+        ]),
+        el("div", { class:"distance-stat-detail" }, 
+          `${riderA.split(" ")[0]}: ${data.aWins} wins | ${riderB.split(" ")[0]}: ${data.bWins} wins${data.ties > 0 ? ` | Gelijk: ${data.ties}` : ""}`)
+      ]);
+    });
+  
+  sections.push(el("div", { class:"stats-section" }, [
+    el("h3", { class:"stats-heading" }, "🎯 PER AFSTAND"),
+    ...distanceRows
+  ]));
+  
+  // Section 3: Recent form
+  if(stats.recent.length > 0){
+    const recentA = stats.recent.map(w => w === 'a' ? 'W' : w === 'b' ? 'L' : 'T').join('-');
+    const recentB = stats.recent.map(w => w === 'b' ? 'W' : w === 'a' ? 'L' : 'T').join('-');
+    const recentAWins = stats.recent.filter(w => w === 'a').length;
+    const recentBWins = stats.recent.filter(w => w === 'b').length;
+    const recentAPercent = ((recentAWins / stats.recent.length) * 100).toFixed(0);
+    const recentBPercent = ((recentBWins / stats.recent.length) * 100).toFixed(0);
+    
+    sections.push(el("div", { class:"stats-section" }, [
+      el("h3", { class:"stats-heading" }, `📈 RECENTE VORM (laatste ${stats.recent.length})`),
+      el("div", { class:"stats-row recent-row" }, [
+        el("span", {}, `${riderA.split(" ")[0]}: `),
+        el("span", { class:"recent-record" }, recentA),
+        el("span", { class:"recent-percent" }, ` (${recentAPercent}%)`)
+      ]),
+      el("div", { class:"stats-row recent-row" }, [
+        el("span", {}, `${riderB.split(" ")[0]}: `),
+        el("span", { class:"recent-record" }, recentB),
+        el("span", { class:"recent-percent" }, ` (${recentBPercent}%)`)
+      ])
+    ]));
+  }
+  
+  // Section 4: Average positions
+  sections.push(el("div", { class:"stats-section" }, [
+    el("h3", { class:"stats-heading" }, "📍 GEMIDDELDE POSITIE"),
+    el("div", { class:"stats-row" }, `${riderA}: ⌀ ${avgA}`),
+    el("div", { class:"stats-row" }, `${riderB}: ⌀ ${avgB}`),
+    el("div", { class:"stats-note" }, "Lager = beter")
+  ]));
+  
+  // Section 5: Consistency
+  const getConsistencyStars = (stdDev) => {
+    if(stdDev < 1) return "★★★★★ (Zeer consistent)";
+    if(stdDev < 1.5) return "★★★★☆ (Consistent)";
+    if(stdDev < 2.5) return "★★★☆☆ (Gemiddeld)";
+    if(stdDev < 3.5) return "★★☆☆☆ (Wisselvallig)";
+    return "★☆☆☆☆ (Zeer wisselvallig)";
+  };
+  
+  sections.push(el("div", { class:"stats-section" }, [
+    el("h3", { class:"stats-heading" }, "🎲 CONSISTENTIE"),
+    el("div", { class:"stats-row" }, [
+      el("div", {}, `${riderA}: ${getConsistencyStars(stdDevA)}`),
+      el("div", { class:"stats-note" }, `Standaard deviatie: ${stdDevA}`)
+    ]),
+    el("div", { class:"stats-row" }, [
+      el("div", {}, `${riderB}: ${getConsistencyStars(stdDevB)}`),
+      el("div", { class:"stats-note" }, `Standaard deviatie: ${stdDevB}`)
+    ])
+  ]));
+  
+  // Section 6: Prediction
+  const predictionA = getPrediction(parseFloat(aPercent), stats.total);
+  const predictionB = getPrediction(parseFloat(bPercent), stats.total);
+  
+  const distPredictions = Object.entries(stats.byDistance)
+    .sort((a, b) => b[1].total - a[1].total)
+    .map(([dist, data]) => {
+      const aP = ((data.aWins / data.total) * 100).toFixed(0);
+      const bP = ((data.bWins / data.total) * 100).toFixed(0);
+      let prediction = "";
+      
+      if(data.total < 5){
+        prediction = "⚠ Onvoldoende data";
+      }else if(Math.abs(aP - bP) < 10){
+        prediction = "⚖ 50-50 (Evenwichtig)";
+      }else if(aP > bP){
+        prediction = `⭐ ${riderA.split(" ")[0]} ${aP}% kans`;
+      }else{
+        prediction = `⭐ ${riderB.split(" ")[0]} ${bP}% kans`;
+      }
+      
+      return el("div", { class:"prediction-row" }, `${dist}: ${prediction}`);
+    });
+  
+  sections.push(el("div", { class:"stats-section stats-prediction" }, [
+    el("h3", { class:"stats-heading" }, "🔮 VOORSPELLING"),
+    el("div", { class:"stats-row" }, `Algemeen: ${riderA.split(" ")[0]} ${predictionA}`),
+    el("div", { style:"height:8px" }),
+    el("div", { class:"stats-subheading" }, "Bij volgende race:"),
+    ...distPredictions
+  ]));
+  
+  const content = el("div", { class:"stats-modal-content" }, sections);
+  
+  const m = modal(`📊 Statistische Analyse: ${riderA.split(" ")[0]} vs ${riderB.split(" ")[0]}`, content);
+  document.body.appendChild(m);
 }
 
 function showSharedEventsModal(events, riderA, riderB){
@@ -560,6 +795,12 @@ function compareMiddle(a, b, metrics){
   const aPill = el("div", { class:"pill pill--wide pill--clickable" }, `Winst ${a.split(" ")[0]}: ${s.aAhead}`);
   const bPill = el("div", { class:"pill pill--wide pill--clickable" }, `Winst ${b.split(" ")[0]}: ${s.bAhead}`);
   
+  // Create stats button
+  const statsBtn = el("button", { 
+    class:"btn-stats", 
+    type:"button" 
+  }, "📊 Stats & Voorspelling");
+  
   // Add click handlers
   sharedPill.addEventListener("click", () => {
     showSharedEventsModal(details.sharedEvents, a, b);
@@ -573,6 +814,10 @@ function compareMiddle(a, b, metrics){
     showWinsModal(details.bWins, b, a);
   });
   
+  statsBtn.addEventListener("click", () => {
+    showStatsModal(details.sharedEvents, a, b);
+  });
+  
   return el("div", { class:"hmid" }, [
     el("div", { class:"hmid__title" }, "Vergelijking"),
     el("div", { class:"hmid__row" }, [
@@ -580,6 +825,7 @@ function compareMiddle(a, b, metrics){
       aPill,
       bPill
     ]),
+    el("div", { style:"margin-top:12px" }, statsBtn),
     el("div", { class:"muted", style:"margin-top:10px" },
       "'Winst' = vaker een betere positie (lager pos-getal) binnen dezelfde uitslag. Klik op een resultaat voor details."
     )

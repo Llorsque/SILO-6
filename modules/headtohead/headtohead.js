@@ -77,9 +77,13 @@ function calculateStats(events, riderA, riderB){
     else if(winner === 'b') stats.byDistance[dist].bWins++;
     else if(winner === 'tie') stats.byDistance[dist].ties++;
     
-    // Track recent (last 5)
+    // Track recent (last 5) with actual positions
     if(idx >= events.length - 5){
-      stats.recent.push(winner);
+      stats.recent.push({
+        winner: winner,
+        aPos: aPos || "—",
+        bPos: bPos || "—"
+      });
     }
   });
   
@@ -129,6 +133,15 @@ function modal(title, content, onClose){
 function showStatsModal(events, riderA, riderB){
   const stats = calculateStats(events, riderA, riderB);
   const confidence = getConfidenceLevel(stats.total);
+  
+  // Helper: Extract last name (everything except first name which is at the end)
+  const getLastName = (fullName) => {
+    const parts = fullName.split(" ");
+    return parts.length > 1 ? parts.slice(0, -1).join(" ") : parts[0];
+  };
+  
+  const nameA = getLastName(riderA);
+  const nameB = getLastName(riderB);
   
   // Calculate percentages
   const aPercent = stats.total > 0 ? ((stats.aWins / stats.total) * 100).toFixed(1) : 0;
@@ -180,12 +193,12 @@ function showStatsModal(events, riderA, riderB){
         el("div", { class:"distance-stat-header" }, `${dist} (${data.total} races)`),
         el("div", { class:"distance-stat-bar" }, [
           el("div", { class:"bar-item bar-a", style:`width:${aP}%` }, 
-            data.aWins > 0 ? `${riderA.split(" ")[0]}: ${aP}%` : ""),
+            data.aWins > 0 ? `${nameA}: ${aP}%` : ""),
           el("div", { class:"bar-item bar-b", style:`width:${bP}%` }, 
-            data.bWins > 0 ? `${riderB.split(" ")[0]}: ${bP}%` : "")
+            data.bWins > 0 ? `${nameB}: ${bP}%` : "")
         ]),
         el("div", { class:"distance-stat-detail" }, 
-          `${riderA.split(" ")[0]}: ${data.aWins} wins | ${riderB.split(" ")[0]}: ${data.bWins} wins${data.ties > 0 ? ` | Gelijk: ${data.ties}` : ""}`)
+          `${nameA}: ${data.aWins} wins | ${nameB}: ${data.bWins} wins${data.ties > 0 ? ` | Gelijk: ${data.ties}` : ""}`)
       ]);
     });
   
@@ -196,22 +209,23 @@ function showStatsModal(events, riderA, riderB){
   
   // Section 3: Recent form
   if(stats.recent.length > 0){
-    const recentA = stats.recent.map(w => w === 'a' ? 'W' : w === 'b' ? 'L' : 'T').join('-');
-    const recentB = stats.recent.map(w => w === 'b' ? 'W' : w === 'a' ? 'L' : 'T').join('-');
-    const recentAWins = stats.recent.filter(w => w === 'a').length;
-    const recentBWins = stats.recent.filter(w => w === 'b').length;
+    // Build position strings
+    const recentA = stats.recent.map(r => String(r.aPos)).join(' - ');
+    const recentB = stats.recent.map(r => String(r.bPos)).join(' - ');
+    const recentAWins = stats.recent.filter(r => r.winner === 'a').length;
+    const recentBWins = stats.recent.filter(r => r.winner === 'b').length;
     const recentAPercent = ((recentAWins / stats.recent.length) * 100).toFixed(0);
     const recentBPercent = ((recentBWins / stats.recent.length) * 100).toFixed(0);
     
     sections.push(el("div", { class:"stats-section" }, [
       el("h3", { class:"stats-heading" }, `📈 RECENTE VORM (laatste ${stats.recent.length})`),
       el("div", { class:"stats-row recent-row" }, [
-        el("span", {}, `${riderA.split(" ")[0]}: `),
+        el("span", {}, `${nameA}: `),
         el("span", { class:"recent-record" }, recentA),
         el("span", { class:"recent-percent" }, ` (${recentAPercent}%)`)
       ]),
       el("div", { class:"stats-row recent-row" }, [
-        el("span", {}, `${riderB.split(" ")[0]}: `),
+        el("span", {}, `${nameB}: `),
         el("span", { class:"recent-record" }, recentB),
         el("span", { class:"recent-percent" }, ` (${recentBPercent}%)`)
       ])
@@ -263,9 +277,9 @@ function showStatsModal(events, riderA, riderB){
       }else if(Math.abs(aP - bP) < 10){
         prediction = "⚖ 50-50 (Evenwichtig)";
       }else if(aP > bP){
-        prediction = `⭐ ${riderA.split(" ")[0]} ${aP}% kans`;
+        prediction = `⭐ ${nameA} ${aP}% kans`;
       }else{
-        prediction = `⭐ ${riderB.split(" ")[0]} ${bP}% kans`;
+        prediction = `⭐ ${nameB} ${bP}% kans`;
       }
       
       return el("div", { class:"prediction-row" }, `${dist}: ${prediction}`);
@@ -273,7 +287,7 @@ function showStatsModal(events, riderA, riderB){
   
   sections.push(el("div", { class:"stats-section stats-prediction" }, [
     el("h3", { class:"stats-heading" }, "🔮 VOORSPELLING"),
-    el("div", { class:"stats-row" }, `Algemeen: ${riderA.split(" ")[0]} ${predictionA}`),
+    el("div", { class:"stats-row" }, `Algemeen: ${nameA} ${predictionA}`),
     el("div", { style:"height:8px" }),
     el("div", { class:"stats-subheading" }, "Bij volgende race:"),
     ...distPredictions
@@ -281,7 +295,7 @@ function showStatsModal(events, riderA, riderB){
   
   const content = el("div", { class:"stats-modal-content" }, sections);
   
-  const m = modal(`📊 Statistische Analyse: ${riderA.split(" ")[0]} vs ${riderB.split(" ")[0]}`, content);
+  const m = modal(`📊 Statistische Analyse: ${nameA} vs ${nameB}`, content);
   document.body.appendChild(m);
 }
 

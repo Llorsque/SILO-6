@@ -312,28 +312,40 @@ function buildEventKey(r){
   ].join("|");
 }
 
-function isEligibleRun(r, runFilterSet){
-  // If no run types selected in filter, exclude all
-  if(runFilterSet.size === 0) return false;
+function isEligibleRun(r, runFilterValue){
+  // If "none" selected, exclude all
+  if(runFilterValue === "none") return false;
   
   // Always exclude "eindklassement"
   const rk = String(r.runKey || "").toLowerCase();
   if(rk === "eindklassement") return false;
   
-  // Check if this run type is in the selected filter
-  const runRaw = String(r.runRaw || r.runKey || "").trim();
-  return runFilterSet.has(runRaw);
+  // If "all" selected, include everything except eindklassement
+  if(runFilterValue === "all") return true;
+  
+  // Normalize the run name from the data
+  const runRaw = String(r.runRaw || r.runKey || "").toLowerCase().trim();
+  
+  // Check if it matches the selected filter
+  if(runFilterValue === "Final A"){
+    return runRaw === "final a";
+  }
+  if(runFilterValue === "Final B"){
+    return runRaw === "final b";
+  }
+  
+  return false;
 }
 
 function filterRows(results, filters){
   const tSet = filters.tournaments;
   const dSet = filters.distances;
   const ySet = filters.seasons;
-  const rSet = filters.runs;
+  const runFilterValue = filters.runFilter;
 
   return results.filter(r => {
     if(!r || !r.skaterName) return false;
-    if(!isEligibleRun(r, rSet)) return false;
+    if(!isEligibleRun(r, runFilterValue)) return false;
 
     if(tSet.size && !tSet.has(r.tournamentShort)) return false;
     if(ySet.size && !ySet.has(r.season)) return false;
@@ -633,15 +645,23 @@ export async function mountHeadToHead(root){
 
   const seasons = uniqSorted(dataset.results.map(r => r.season).filter(Boolean));
   
-  // Get unique run types from data, excluding "eindklassement"
-  const runTypes = uniqSorted(
-    dataset.results
-      .map(r => r.runRaw || r.runKey || "")
-      .filter(run => {
-        const normalized = String(run).toLowerCase().trim();
-        return normalized && normalized !== "eindklassement";
-      })
-  );
+  // Normalize run names: Final A, FINAL A, final a → "Final A"
+  function normalizeRunName(run){
+    const str = String(run).toLowerCase().trim();
+    if(str === "eindklassement") return null; // Exclude
+    if(str === "final a") return "Final A";
+    if(str === "final b") return "Final B";
+    // For any other run type, return as-is with proper casing
+    return run;
+  }
+  
+  // Run filter options - simplified to 4 choices
+  const runFilterOptions = [
+    { key: "none", label: "None" },
+    { key: "all", label: "All" },
+    { key: "Final A", label: "Final A" },
+    { key: "Final B", label: "Final B" }
+  ];
   
   const tournaments = [
     { key:"OS", label:"OS" },
@@ -663,7 +683,7 @@ export async function mountHeadToHead(root){
   const tSet = new Set(); // EMPTY by default - no filters selected
   const dSet = new Set(); // EMPTY by default - no filters selected
   const ySet = new Set(); // EMPTY by default - no filters selected
-  const rSet = new Set(); // Run types - EMPTY by default
+  let runFilter = "none"; // Run filter: "none", "all", "Final A", or "Final B"
   const cleanupFns = [];
 
   const resultsWrap = el("div", { class:"h2hWrap" });
@@ -672,12 +692,12 @@ export async function mountHeadToHead(root){
     const t = tSet.size ? Array.from(tSet).map(k => (k==="WC" ? "WC/WT" : k)).join(", ") : "Geen";
     const d = dSet.size ? Array.from(dSet).join(", ") : "Geen";
     const y = ySet.size ? Array.from(ySet).sort((a,b)=>b-a).join(", ") : "Geen";
-    const r = rSet.size ? Array.from(rSet).join(", ") : "Geen";
+    const r = runFilter !== "none" ? runFilter : "Geen";
     return `Toernooi: ${t}  |  Afstand: ${d}  |  Seizoen: ${y}  |  Run: ${r}`;
   }
 
   function hasAnyFilters(){
-    return tSet.size > 0 || dSet.size > 0 || ySet.size > 0 || rSet.size > 0;
+    return tSet.size > 0 || dSet.size > 0 || ySet.size > 0 || runFilter !== "none";
   }
 
   function renderResults(){
@@ -703,7 +723,7 @@ export async function mountHeadToHead(root){
       return;
     }
 
-    const filters = { tournaments: tSet, distances: dSet, seasons: ySet, runs: rSet };
+    const filters = { tournaments: tSet, distances: dSet, seasons: ySet, runFilter: runFilter };
     const filtered = filterRows(dataset.results, filters)
       .filter(r => chosen.includes(r.skaterName));
 
@@ -802,12 +822,12 @@ export async function mountHeadToHead(root){
         ))
       ]),
       
-      // Run filter
+      // Run filter - 4 simple options
       el("div", { class:"filterGroup", style:"margin-top:10px" }, [
         el("div", { class:"filterLabel" }, "Run"),
-        el("div", { class:"chipRow" }, runTypes.map(run =>
-          chip(run, rSet.has(run), ()=>{
-            normalizeSetToggle(rSet, run);
+        el("div", { class:"chipRow" }, runFilterOptions.map(opt =>
+          chip(opt.label, runFilter === opt.key, ()=>{
+            runFilter = opt.key;
             render(); // Re-render to update chip states
           })
         ))

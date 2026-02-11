@@ -271,6 +271,39 @@
   box-shadow:0 0 12px rgba(82,232,232,0.2);
 }
 
+/* Modal summary section */
+.summary-section{
+  background:rgba(82,232,232,0.08);
+  border:1px solid rgba(82,232,232,0.25);
+  border-radius:12px;
+  padding:14px;
+}
+
+.summary-title{
+  font-size:13px;
+  font-weight:900;
+  color:rgba(82,232,232,1);
+  margin-bottom:10px;
+  letter-spacing:0.02em;
+}
+
+.summary-pills{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.summary-pill{
+  background:rgba(82,232,232,0.15);
+  border:1px solid rgba(82,232,232,0.4);
+  color:rgba(255,255,255,0.95);
+  padding:8px 12px;
+  border-radius:999px;
+  font-size:13px;
+  font-weight:900;
+  white-space:nowrap;
+}
+
 /* Readability + click affordance */
 .mod--headtohead .hmid{
   background: rgba(10,14,24,.72);

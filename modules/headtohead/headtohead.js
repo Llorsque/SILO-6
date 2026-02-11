@@ -51,6 +51,20 @@ function modal(title, content, onClose){
 }
 
 function showSharedEventsModal(events, riderA, riderB){
+  // Calculate distance breakdown
+  const distanceCount = {};
+  events.forEach(ev => {
+    const dist = ev.distance || "Onbekend";
+    distanceCount[dist] = (distanceCount[dist] || 0) + 1;
+  });
+  
+  // Create summary pills
+  const summaryPills = Object.entries(distanceCount)
+    .sort((a, b) => b[1] - a[1]) // Sort by count descending
+    .map(([dist, count]) => 
+      el("span", { class:"summary-pill" }, `${dist}: ${count}`)
+    );
+  
   const rows = events.map(ev => {
     return el("div", { class:"event-row" }, [
       el("span", {}, ev.tournament || "—"),
@@ -61,6 +75,11 @@ function showSharedEventsModal(events, riderA, riderB){
   });
   
   const content = el("div", { class:"event-list" }, [
+    el("div", { class:"summary-section" }, [
+      el("div", { class:"summary-title" }, "Samenvatting per afstand"),
+      el("div", { class:"summary-pills" }, summaryPills)
+    ]),
+    el("div", { style:"height:16px" }),
     el("div", { class:"event-header" }, [
       el("span", {}, "Wedstrijd"),
       el("span", {}, "Afstand"),
@@ -79,6 +98,20 @@ function showSharedEventsModal(events, riderA, riderB){
 }
 
 function showWinsModal(events, winner, loser){
+  // Calculate distance breakdown
+  const distanceCount = {};
+  events.forEach(ev => {
+    const dist = ev.distance || "Onbekend";
+    distanceCount[dist] = (distanceCount[dist] || 0) + 1;
+  });
+  
+  // Create summary pills
+  const summaryPills = Object.entries(distanceCount)
+    .sort((a, b) => b[1] - a[1]) // Sort by count descending
+    .map(([dist, count]) => 
+      el("span", { class:"summary-pill" }, `${dist}: ${count}`)
+    );
+  
   const rows = events.map(ev => {
     const winnerData = ev.riders[winner] || { pos: null, opmerking: null };
     const loserData = ev.riders[loser] || { pos: null, opmerking: null };
@@ -103,6 +136,11 @@ function showWinsModal(events, winner, loser){
   });
   
   const content = el("div", { class:"event-list" }, [
+    el("div", { class:"summary-section" }, [
+      el("div", { class:"summary-title" }, "Samenvatting per afstand"),
+      el("div", { class:"summary-pills" }, summaryPills)
+    ]),
+    el("div", { style:"height:16px" }),
     el("div", { class:"event-header-with-pos" }, [
       el("div", { class:"event-info-header" }, [
         el("span", {}, "Wedstrijd"),

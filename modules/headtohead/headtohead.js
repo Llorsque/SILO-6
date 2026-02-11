@@ -270,9 +270,9 @@ function buildEventKey(r){
 }
 
 function isEligibleRun(r){
-  // Final A or Eindklassement/Overall
+  // ONLY Final A - Eindklassement is EXCLUDED from Head-to-Head comparison
   const rk = String(r.runKey || "").toLowerCase();
-  return rk === "final a" || rk === "eindklassement";
+  return rk === "final a";
 }
 
 function filterRows(results, filters){
@@ -287,17 +287,8 @@ function filterRows(results, filters){
     if(tSet.size && !tSet.has(r.tournamentShort)) return false;
     if(ySet.size && !ySet.has(r.season)) return false;
 
-    // Distance handling:
-    // - For normal races: must match selected distances (if any)
-    // - For WC/WT eindklassement: allow even when distance is "Eindklassement"
-    if(dSet.size){
-      const distOk = dSet.has(r.distance);
-      const allowOverall = (r.tournamentShort === "WC" && r.runKey === "eindklassement");
-      if(!distOk && !allowOverall) return false;
-    }
-
-    // WC/WT rule: only eindklassement
-    if(r.tournamentShort === "WC" && r.runKey !== "eindklassement") return false;
+    // Distance filter
+    if(dSet.size && !dSet.has(r.distance)) return false;
 
     return true;
   });
@@ -440,17 +431,8 @@ function computeMetrics(filteredRows, riders){
             pairDetails[`${a}||${b}`].bWins.push(eventInfo);
             pairDetails[`${b}||${a}`].aWins.push(eventInfo);
           }
-        }else{
-          // TIE DETECTED - log it for debugging
-          console.log("=== TIE FOUND ===");
-          console.log(`${a} vs ${b}`);
-          console.log(`Both have position: ${pa}`);
-          if(eventInfo){
-            console.log("Event details:", eventInfo);
-          }
-          console.log("================");
-          // Removed tie tracking - if pa === pb, we simply don't count it
         }
+        // If pa === pb (tie), don't count in either win category
       }
     }
   }
@@ -465,7 +447,7 @@ function riderCard(name, meta, metrics){
 
   const lines = [];
   lines.push(el("div", { class:"h2" }, name));
-  lines.push(el("div", { class:"muted" }, "Podium (Final A + Eindklassement)"));
+  lines.push(el("div", { class:"muted" }, "Podium (Final A only)"));
   lines.push(el("div", { class:"hrow" }, [
     el("div", { class:"pill" }, `🥇 ${p.gold}`),
     el("div", { class:"pill" }, `🥈 ${p.silver}`),

@@ -792,34 +792,76 @@ export async function mountHeadToHead(root){
       // Wedstrijd filter
       el("div", { class:"filterGroup", style:"margin-top:10px" }, [
         el("div", { class:"filterLabel" }, "Wedstrijd"),
-        el("div", { class:"chipRow" }, tournaments.map(t =>
-          chip(t.label, tSet.has(t.key), ()=>{
-            normalizeSetToggle(tSet, t.key);
-            render(); // Re-render to update chip states
-          })
-        ))
+        el("div", { class:"chipRow" }, [
+          // "All" toggle
+          chip("All", tSet.size === tournaments.length, ()=>{
+            if(tSet.size === tournaments.length){
+              // All selected → deselect all
+              tSet.clear();
+            }else{
+              // Not all selected → select all
+              tSet.clear();
+              tournaments.forEach(t => tSet.add(t.key));
+            }
+            render();
+          }),
+          ...tournaments.map(t =>
+            chip(t.label, tSet.has(t.key), ()=>{
+              normalizeSetToggle(tSet, t.key);
+              render();
+            })
+          )
+        ])
       ]),
       
       // Afstand filter
       el("div", { class:"filterGroup", style:"margin-top:10px" }, [
         el("div", { class:"filterLabel" }, "Afstand"),
-        el("div", { class:"chipRow" }, distances.map(d =>
-          chip(d.label, dSet.has(d.key), ()=>{
-            normalizeSetToggle(dSet, d.key);
-            render(); // Re-render to update chip states
-          })
-        ))
+        el("div", { class:"chipRow" }, [
+          // "All" toggle
+          chip("All", dSet.size === distances.length, ()=>{
+            if(dSet.size === distances.length){
+              // All selected → deselect all
+              dSet.clear();
+            }else{
+              // Not all selected → select all
+              dSet.clear();
+              distances.forEach(d => dSet.add(d.key));
+            }
+            render();
+          }),
+          ...distances.map(d =>
+            chip(d.label, dSet.has(d.key), ()=>{
+              normalizeSetToggle(dSet, d.key);
+              render();
+            })
+          )
+        ])
       ]),
       
       // Seizoen filter
       el("div", { class:"filterGroup", style:"margin-top:10px" }, [
         el("div", { class:"filterLabel" }, "Seizoen"),
-        el("div", { class:"chipRow" }, seasons.slice().sort((a,b)=>b-a).map(y =>
-          chip(String(y), ySet.has(y), ()=>{
-            normalizeSetToggle(ySet, y);
-            render(); // Re-render to update chip states
-          })
-        ))
+        el("div", { class:"chipRow" }, [
+          // "All" toggle
+          chip("All", ySet.size === seasons.length, ()=>{
+            if(ySet.size === seasons.length){
+              // All selected → deselect all
+              ySet.clear();
+            }else{
+              // Not all selected → select all
+              ySet.clear();
+              seasons.forEach(y => ySet.add(y));
+            }
+            render();
+          }),
+          ...seasons.slice().sort((a,b)=>b-a).map(y =>
+            chip(String(y), ySet.has(y), ()=>{
+              normalizeSetToggle(ySet, y);
+              render();
+            })
+          )
+        ])
       ]),
       
       // Run filter - 4 simple options

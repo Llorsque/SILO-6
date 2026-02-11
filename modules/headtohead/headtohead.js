@@ -440,8 +440,17 @@ function computeMetrics(filteredRows, riders){
             pairDetails[`${a}||${b}`].bWins.push(eventInfo);
             pairDetails[`${b}||${a}`].aWins.push(eventInfo);
           }
+        }else{
+          // TIE DETECTED - log it for debugging
+          console.log("=== TIE FOUND ===");
+          console.log(`${a} vs ${b}`);
+          console.log(`Both have position: ${pa}`);
+          if(eventInfo){
+            console.log("Event details:", eventInfo);
+          }
+          console.log("================");
+          // Removed tie tracking - if pa === pb, we simply don't count it
         }
-        // Removed tie tracking - if pa === pb, we simply don't count it
       }
     }
   }

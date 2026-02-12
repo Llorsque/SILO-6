@@ -116,7 +116,53 @@ export async function mountBiography(root){
       .filter(Boolean)
   )).sort((a,b)=>a.localeCompare(b));
 
-  const state = { rider: "", tournaments: new Set(), years: new Set(), distances: new Set(), podium: new Set() };
+  // Get all available seasons from dataset
+  const allSeasons = Array.from(new Set(resultsAll.map(r => r.season).filter(Boolean))).sort((a,b)=>b-a);
+
+  const state = { 
+    rider: "", 
+    tournaments: new Set(), 
+    years: new Set(), 
+    distances: new Set(), 
+    runFilter: "none" 
+  };
+
+  // Fixed filter options matching head-to-head
+  const tournaments = [
+    { key:"OS", label:"OS" },
+    { key:"WK", label:"WK" },
+    { key:"WKJ", label:"WKJ" },
+    { key:"EK", label:"EK" },
+    { key:"WC", label:"WC/WT" },
+    { key:"NK", label:"NK" }
+  ];
+  
+  const distances = [
+    { key:"500m", label:"500m" },
+    { key:"1000m", label:"1000m" },
+    { key:"1500m", label:"1500m" }
+  ];
+  
+  const runFilterOptions = [
+    { key: "none", label: "None" },
+    { key: "all", label: "All" },
+    { key: "Final A", label: "Final A" },
+    { key: "Final B", label: "Final B" }
+  ];
+  
+  // Normalize run names
+  function normalizeRunName(run){
+    const str = String(run).toLowerCase().trim();
+    if(str === "eindklassement") return null; // Exclude
+    if(str === "final a") return "Final A";
+    if(str === "final b") return "Final B";
+    return run;
+  }
+  
+  function normalizeSetToggle(set, key){
+    if(set.has(key)) set.delete(key);
+    else set.add(key);
+  }
 
   const header = el("div", { class:"row", style:"align-items:flex-end; gap:12px" }, [
     el("div", null, [
@@ -126,7 +172,7 @@ export async function mountBiography(root){
     el("div", { class:"spacer" }),
     el("button", { class:"btn", type:"button" }, "Reset")
   ]);
-  header.querySelector("button").addEventListener("click", ()=>{ state.rider=""; state.tournaments.clear(); state.years.clear(); state.distances.clear(); state.podium.clear(); render(); });
+  header.querySelector("button").addEventListener("click", ()=>{ state.rider=""; state.tournaments.clear(); state.years.clear(); state.distances.clear(); state.runFilter="none"; render(); });
 
   const filterCard = el("div", { class:"filtersCard" });
   const profileWrap = el("div", { class:"bioProfileWrap" });
@@ -218,55 +264,135 @@ export async function mountBiography(root){
     const allRiderRows = resultsAll
       .filter(r => r.skaterName === state.rider);
 
-    // Build filter options from rider rows
-    const tOptions = Array.from(new Set(allRiderRows.map(r => r.tournament).filter(Boolean))).sort((a,b)=>a.localeCompare(b));
-    const yOptions = Array.from(new Set(allRiderRows.map(r => r.season).filter(Boolean))).sort((a,b)=>a-b);
-    const dOptions = Array.from(new Set(allRiderRows.map(r => r.distance).filter(Boolean))).sort((a,b)=>String(a).localeCompare(String(b)));
-
-    // Results filters UI
-    const rfRow = el("div", { class:"filtersRow" }, [
-      el("div", { class:"filterGroup", style:"min-width:260px" }, [
+    // Results filters UI - matching head-to-head style
+    const rfRow = el("div", { class:"filtersCard" }, [
+      el("div", { class:"filterLabel", style:"margin-bottom:10px;font-size:14px;color:var(--muted)" }, "Filters"),
+      
+      // Toernooi filter
+      el("div", { class:"filterGroup", style:"margin-top:10px" }, [
         el("div", { class:"filterLabel" }, "Toernooi"),
         el("div", { class:"chipRow" }, [
-          chip("All", state.tournaments.size === 0, ()=>{ state.tournaments.clear(); render(); }),
-          ...tOptions.map(t => chip(tournamentShort(t), state.tournaments.has(t), ()=>{ if(state.tournaments.has(t)) state.tournaments.delete(t); else state.tournaments.add(t); render(); }))
+          chip("All", state.tournaments.size === tournaments.length, ()=>{
+            if(state.tournaments.size === tournaments.length){
+              state.tournaments.clear();
+            }else{
+              state.tournaments.clear();
+              tournaments.forEach(t => state.tournaments.add(t.key));
+            }
+            render();
+          }),
+          ...tournaments.map(t =>
+            chip(t.label, state.tournaments.has(t.key), ()=>{
+              normalizeSetToggle(state.tournaments, t.key);
+              render();
+            })
+          )
         ])
       ]),
-      el("div", { class:"divider" }),
-      el("div", { class:"filterGroup", style:"min-width:260px" }, [
-        el("div", { class:"filterLabel" }, "Seizoen"),
-        el("div", { class:"chipRow" }, [
-          chip("All", state.years.size === 0, ()=>{ state.years.clear(); render(); }),
-          ...yOptions.map(y => chip(String(y), state.years.has(y), ()=>{ if(state.years.has(y)) state.years.delete(y); else state.years.add(y); render(); }))
-        ])
-      ]),
-      el("div", { class:"divider" }),
-      el("div", { class:"filterGroup", style:"min-width:260px" }, [
+      
+      // Afstand filter
+      el("div", { class:"filterGroup", style:"margin-top:10px" }, [
         el("div", { class:"filterLabel" }, "Afstand"),
         el("div", { class:"chipRow" }, [
-          chip("All", state.distances.size === 0, ()=>{ state.distances.clear(); render(); }),
-          ...dOptions.map(d => chip(String(d), state.distances.has(d), ()=>{ if(state.distances.has(d)) state.distances.delete(d); else state.distances.add(d); render(); }))
+          chip("All", state.distances.size === distances.length, ()=>{
+            if(state.distances.size === distances.length){
+              state.distances.clear();
+            }else{
+              state.distances.clear();
+              distances.forEach(d => state.distances.add(d.key));
+            }
+            render();
+          }),
+          ...distances.map(d =>
+            chip(d.label, state.distances.has(d.key), ()=>{
+              normalizeSetToggle(state.distances, d.key);
+              render();
+            })
+          )
         ])
       ]),
-      el("div", { class:"divider" }),
-      el("div", { class:"filterGroup" }, [
-        el("div", { class:"filterLabel" }, "Podium"),
+      
+      // Seizoen filter
+      el("div", { class:"filterGroup", style:"margin-top:10px" }, [
+        el("div", { class:"filterLabel" }, "Seizoen"),
         el("div", { class:"chipRow" }, [
-          chip("All", state.podium.size === 0, ()=>{ state.podium.clear(); render(); }),
-          chip("🥇", state.podium.has(1), ()=>{ if(state.podium.has(1)) state.podium.delete(1); else state.podium.add(1); render(); }),
-          chip("🥈", state.podium.has(2), ()=>{ if(state.podium.has(2)) state.podium.delete(2); else state.podium.add(2); render(); }),
-          chip("🥉", state.podium.has(3), ()=>{ if(state.podium.has(3)) state.podium.delete(3); else state.podium.add(3); render(); }),
+          chip("All", state.years.size === allSeasons.length, ()=>{
+            if(state.years.size === allSeasons.length){
+              state.years.clear();
+            }else{
+              state.years.clear();
+              allSeasons.forEach(y => state.years.add(y));
+            }
+            render();
+          }),
+          ...allSeasons.map(y =>
+            chip(String(y), state.years.has(y), ()=>{
+              normalizeSetToggle(state.years, y);
+              render();
+            })
+          )
         ])
+      ]),
+      
+      // Run filter
+      el("div", { class:"filterGroup", style:"margin-top:10px" }, [
+        el("div", { class:"filterLabel" }, "Run"),
+        el("div", { class:"chipRow" }, runFilterOptions.map(opt =>
+          chip(opt.label, state.runFilter === opt.key, ()=>{
+            state.runFilter = opt.key;
+            render();
+          })
+        ))
       ])
     ]);
 
     resultsFilterWrap.appendChild(rfRow);
 
+    // Apply filters - matching head-to-head logic
     const rows = allRiderRows
-      .filter(r => (state.tournaments.size ? state.tournaments.has(r.tournament) : true))
-      .filter(r => (state.years.size ? state.years.has(r.season) : true))
-      .filter(r => (state.distances.size ? state.distances.has(r.distance) : true))
-      .filter(r => (state.podium.size ? state.podium.has(r.pos) : true))
+      .filter(r => {
+        // Tournament filter
+        if(state.tournaments.size > 0){
+          const tShort = tournamentShort(r.tournament);
+          return state.tournaments.has(tShort);
+        }
+        return true;
+      })
+      .filter(r => {
+        // Distance filter
+        if(state.distances.size > 0){
+          return state.distances.has(r.distance);
+        }
+        return true;
+      })
+      .filter(r => {
+        // Season filter
+        if(state.years.size > 0){
+          return state.years.has(r.season);
+        }
+        return true;
+      })
+      .filter(r => {
+        // Run filter
+        if(state.runFilter === "none") return true; // No run filter
+        
+        const normalized = normalizeRunName(r.runKey);
+        
+        if(state.runFilter === "all"){
+          // "All" = everything except Eindklassement
+          return normalized !== null;
+        }
+        
+        if(state.runFilter === "Final A"){
+          return normalized === "Final A";
+        }
+        
+        if(state.runFilter === "Final B"){
+          return normalized === "Final B";
+        }
+        
+        return true;
+      })
       .sort((a,b)=>{
         const da = a.dateISO ? new Date(a.dateISO).getTime() : 0;
         const db = b.dateISO ? new Date(b.dateISO).getTime() : 0;

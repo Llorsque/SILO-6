@@ -38,10 +38,12 @@ function calculateStats(events, riderA, riderB){
   
   // Process each event
   events.forEach((ev, idx) => {
-    const aData = ev.riders[riderA] || { pos: null };
-    const bData = ev.riders[riderB] || { pos: null };
+    const aData = ev.riders[riderA] || { pos: null, opmerking: null };
+    const bData = ev.riders[riderB] || { pos: null, opmerking: null };
     const aPos = aData.pos;
     const bPos = bData.pos;
+    const aOpm = aData.opmerking;
+    const bOpm = bData.opmerking;
     
     // Track positions for average calculation
     if(aPos) stats.positions.a.push(aPos);
@@ -77,12 +79,14 @@ function calculateStats(events, riderA, riderB){
     else if(winner === 'b') stats.byDistance[dist].bWins++;
     else if(winner === 'tie') stats.byDistance[dist].ties++;
     
-    // Track recent (last 5) with actual positions
+    // Track recent (last 5) with actual positions and opmerkingen
     if(idx >= events.length - 5){
       stats.recent.push({
         winner: winner,
         aPos: aPos || "—",
-        bPos: bPos || "—"
+        bPos: bPos || "—",
+        aOpm: aOpm,
+        bOpm: bOpm
       });
     }
   });
@@ -209,9 +213,14 @@ function showStatsModal(events, riderA, riderB){
   
   // Section 3: Recent form
   if(stats.recent.length > 0){
-    // Build position strings
-    const recentA = stats.recent.map(r => String(r.aPos)).join(' - ');
-    const recentB = stats.recent.map(r => String(r.bPos)).join(' - ');
+    // Build position strings with opmerking
+    const formatPos = (pos, opm) => {
+      const posStr = String(pos);
+      return opm ? `${posStr} (${opm})` : posStr;
+    };
+    
+    const recentA = stats.recent.map(r => formatPos(r.aPos, r.aOpm)).join(' - ');
+    const recentB = stats.recent.map(r => formatPos(r.bPos, r.bOpm)).join(' - ');
     const recentAWins = stats.recent.filter(r => r.winner === 'a').length;
     const recentBWins = stats.recent.filter(r => r.winner === 'b').length;
     const recentAPercent = ((recentAWins / stats.recent.length) * 100).toFixed(0);
@@ -606,15 +615,18 @@ function filterRows(results, filters){
   });
 }
 
-function computeMetrics(filteredRows, riders){
-  // Build rider -> rows
+function computeMetrics(filteredRows, riders, allFiltered){
+  // For individual rider stats, use allFiltered (all races matching filters)
+  // For comparison stats, use filteredRows (only races where both riders appear)
+  
+  // Build rider -> rows from ALL filtered data (not just shared races)
   const byRider = new Map();
   for(const name of riders) byRider.set(name, []);
-  for(const r of filteredRows){
+  for(const r of allFiltered){
     if(byRider.has(r.skaterName)) byRider.get(r.skaterName).push(r);
   }
 
-  // best position per rider
+  // best position per rider (from ALL filtered races for that rider)
   const bestPos = {};
   const podium = {};
   const participation = {};
@@ -623,7 +635,7 @@ function computeMetrics(filteredRows, riders){
     podium[name] = { gold:0, silver:0, bronze:0 };
     const rows = byRider.get(name) || [];
 
-    // bestPos = minimum pos in filtered rows
+    // bestPos = minimum pos in ALL filtered rows for this rider
     for(const rr of rows){
       const p = Number(rr.pos);
       if(!p) continue;
@@ -642,7 +654,7 @@ function computeMetrics(filteredRows, riders){
       }
     }
 
-    // participation: unique tournamentShort + season, and keep set of distances per event
+    // participation: unique tournamentShort + season from ALL filtered races
     const ev = new Map(); // key -> Set(distances)
     for(const rr of rows){
       const key = `${rr.tournamentShort}|${rr.season}`;
@@ -655,7 +667,7 @@ function computeMetrics(filteredRows, riders){
     };
   }
 
-  // shared results and wins matrix
+  // shared results and wins matrix (use filteredRows = comparison data)
   const events = new Map(); // eventKey -> Map(rider->pos)
   for(const r of filteredRows){
     if(!riders.includes(r.skaterName)) continue;
@@ -984,10 +996,14 @@ export async function mountHeadToHead(root){
     }
 
     const filters = { tournaments: tSet, distances: dSet, seasons: ySet, runFilter: runFilter };
-    const filtered = filterRows(dataset.results, filters)
-      .filter(r => chosen.includes(r.skaterName));
+    
+    // Get all filtered results (for individual rider stats)
+    const allFiltered = filterRows(dataset.results, filters);
+    
+    // Get filtered results for comparison (only races with chosen riders)
+    const comparisonFiltered = allFiltered.filter(r => chosen.includes(r.skaterName));
 
-    const metrics = computeMetrics(filtered, chosen);
+    const metrics = computeMetrics(comparisonFiltered, chosen, allFiltered);
 
     if(chosen.length === 2){
       const a = chosen[0], b = chosen[1];

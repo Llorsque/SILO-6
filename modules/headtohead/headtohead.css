@@ -632,3 +632,111 @@
   gap: 8px;
 }
 .mod--headtohead .h2hModal__list li{line-height:1.35}
+
+/* Individual Results Section */
+.mod--headtohead .section-divider{
+  height: 1px;
+  background: rgba(255,255,255,0.1);
+  margin: 20px 0;
+}
+
+.mod--headtohead .individual-results-section{
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.mod--headtohead .individual-results-toggle{
+  width: 100%;
+  padding: 16px 20px;
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.95);
+  font-size: 16px;
+  font-weight: 900;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.mod--headtohead .individual-results-toggle:hover{
+  background: rgba(82,232,232,0.08);
+  color: rgba(82,232,232,1);
+}
+
+.mod--headtohead .individual-results-content{
+  padding: 0 20px 20px 20px;
+}
+
+.mod--headtohead .individual-results-summary{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  padding: 16px;
+  background: rgba(82,232,232,0.05);
+  border: 1px solid rgba(82,232,232,0.15);
+  border-radius: 8px;
+}
+
+.mod--headtohead .result-stat-item{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mod--headtohead .result-stat-label{
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mod--headtohead .result-stat-value{
+  font-size: 24px;
+  font-weight: 900;
+  color: rgba(82,232,232,1);
+  line-height: 1;
+}
+
+.mod--headtohead .results-table{
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.mod--headtohead .results-table thead{
+  background: rgba(255,255,255,0.03);
+  border-top: 1px solid rgba(255,255,255,0.1);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.mod--headtohead .results-table th{
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 900;
+  font-size: 11px;
+  color: rgba(255,255,255,0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mod--headtohead .results-table td{
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.mod--headtohead .results-table tr:hover{
+  background: rgba(255,255,255,0.03);
+}
+
+.mod--headtohead .results-table tr.podium-row{
+  background: rgba(82,232,232,0.08);
+}
+
+.mod--headtohead .results-table tr.podium-row:hover{
+  background: rgba(82,232,232,0.12);
+}

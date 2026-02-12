@@ -1076,6 +1076,116 @@ function matrixTable(riders, metrics){
   ]);
 }
 
+function createIndividualResultsTable(riderName, results){
+  // Helper to extract last name
+  const getLastName = (fullName) => {
+    const parts = fullName.split(" ");
+    return parts.length > 1 ? parts.slice(0, -1).join(" ") : parts[0];
+  };
+  
+  const shortName = getLastName(riderName);
+  
+  // Sort by date (newest first)
+  const sorted = results.sort((a, b) => {
+    const da = a.dateISO ? new Date(a.dateISO).getTime() : 0;
+    const db = b.dateISO ? new Date(b.dateISO).getTime() : 0;
+    return db - da;
+  });
+  
+  // Count statistics
+  const totalRaces = sorted.length;
+  const podiums = sorted.filter(r => {
+    const pos = Number(r.pos);
+    return pos >= 1 && pos <= 3;
+  }).length;
+  
+  const bestPos = sorted.reduce((best, r) => {
+    const pos = Number(r.pos);
+    if(!pos) return best;
+    return best === null || pos < best ? pos : best;
+  }, null);
+  
+  const avgPos = (() => {
+    const positions = sorted.map(r => Number(r.pos)).filter(p => p);
+    if(positions.length === 0) return "—";
+    return (positions.reduce((a,b) => a+b, 0) / positions.length).toFixed(1);
+  })();
+  
+  // Create collapsible section
+  const contentWrap = el("div", { class:"individual-results-content", style:"display:none" });
+  const toggleBtn = el("button", { 
+    class:"individual-results-toggle", 
+    type:"button"
+  }, `▶ ${shortName} - ${totalRaces} races`);
+  
+  toggleBtn.addEventListener("click", () => {
+    const isOpen = contentWrap.style.display !== "none";
+    contentWrap.style.display = isOpen ? "none" : "block";
+    toggleBtn.textContent = (isOpen ? "▶" : "▼") + ` ${shortName} - ${totalRaces} races`;
+  });
+  
+  // Stats summary
+  const summary = el("div", { class:"individual-results-summary" }, [
+    el("div", { class:"result-stat-item" }, [
+      el("div", { class:"result-stat-label" }, "Totaal races"),
+      el("div", { class:"result-stat-value" }, String(totalRaces))
+    ]),
+    el("div", { class:"result-stat-item" }, [
+      el("div", { class:"result-stat-label" }, "Podiums"),
+      el("div", { class:"result-stat-value" }, String(podiums))
+    ]),
+    el("div", { class:"result-stat-item" }, [
+      el("div", { class:"result-stat-label" }, "Beste positie"),
+      el("div", { class:"result-stat-value" }, bestPos ? String(bestPos) : "—")
+    ]),
+    el("div", { class:"result-stat-item" }, [
+      el("div", { class:"result-stat-label" }, "Gemiddelde"),
+      el("div", { class:"result-stat-value" }, String(avgPos))
+    ])
+  ]);
+  
+  // Results table
+  const table = el("table", { class:"results-table" });
+  const thead = el("thead", null, el("tr", null, [
+    el("th", null, "Datum"),
+    el("th", null, "Toernooi"),
+    el("th", null, "Locatie"),
+    el("th", null, "Afstand"),
+    el("th", null, "Run"),
+    el("th", null, "Pos."),
+    el("th", null, "Opmerking")
+  ]));
+  table.appendChild(thead);
+  
+  const tbody = el("tbody");
+  sorted.forEach(r => {
+    const pos = Number(r.pos);
+    const isPodium = pos >= 1 && pos <= 3;
+    const medalIcon = pos === 1 ? "🥇" : pos === 2 ? "🥈" : pos === 3 ? "🥉" : "";
+    
+    const row = el("tr", { class: isPodium ? "podium-row" : "" }, [
+      el("td", null, r.datum || "—"),
+      el("td", null, r.tournamentShort || "—"),
+      el("td", null, r.locatie || "—"),
+      el("td", null, r.distance || "—"),
+      el("td", null, r.runKey || "—"),
+      el("td", { style: isPodium ? "font-weight:900" : "" }, pos ? `${medalIcon} ${pos}` : "—"),
+      el("td", { class:"muted" }, r.opmerking && r.opmerking !== "-" ? r.opmerking : "")
+    ]);
+    tbody.appendChild(row);
+  });
+  table.appendChild(tbody);
+  
+  contentWrap.appendChild(summary);
+  contentWrap.appendChild(el("div", { style:"height:12px" }));
+  contentWrap.appendChild(table);
+  
+  return el("div", { class:"individual-results-section" }, [
+    toggleBtn,
+    contentWrap
+  ]);
+}
+
 export async function mountHeadToHead(root){
   clear(root);
 
@@ -1198,12 +1308,25 @@ export async function mountHeadToHead(root){
         riderCard(b, meta, metrics, allFiltered, filters),
       ]));
     }else{
-      // Multi: cards + matrix
+      // Multi: cards + matrix + individual results
       const cards = el("div", { class:"cardsGrid" });
       for(const n of chosen) cards.appendChild(riderCard(n, meta, metrics, allFiltered, filters));
       resultsWrap.appendChild(cards);
       resultsWrap.appendChild(el("div", { style:"height:12px" }));
       resultsWrap.appendChild(matrixTable(chosen, metrics));
+      
+      // Add individual results section
+      resultsWrap.appendChild(el("div", { style:"height:24px" }));
+      resultsWrap.appendChild(el("div", { class:"section-divider" }));
+      resultsWrap.appendChild(el("div", { style:"height:16px" }));
+      resultsWrap.appendChild(el("h3", { style:"font-size:18px;font-weight:900;color:rgba(82,232,232,1);margin-bottom:16px" }, "📋 Individuele Resultaten"));
+      
+      // Create results tables for each rider
+      chosen.forEach(riderName => {
+        const riderResults = allFiltered.filter(r => r.skaterName === riderName);
+        resultsWrap.appendChild(createIndividualResultsTable(riderName, riderResults));
+        resultsWrap.appendChild(el("div", { style:"height:16px" }));
+      });
     }
   }
 

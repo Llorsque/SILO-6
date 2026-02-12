@@ -1,12 +1,12 @@
 import { el, clear } from "../../core/dom.js";
 import { sectionCard } from "../../core/layout.js";
 import { router } from "../../core/router.js";
-import { getDataset } from "../../core/dataset.js";
+import { loadDataset } from "../../core/storage.js";
 
-export function mountFilters(root){
+export async function mountFilters(root){
   clear(root);
   
-  const dataset = getDataset();
+  const dataset = await loadDataset();
   if(!dataset || !dataset.results){
     root.appendChild(sectionCard({
       title:"World Tour Klassementen",

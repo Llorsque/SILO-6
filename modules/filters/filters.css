@@ -4,3 +4,137 @@
    Example:
      .mod--filters .myClass { ... }
 */
+
+/* World Tour Klassementen Styles */
+
+.mod--filters .wt-controls {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.mod--filters .filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mod--filters .filter-label {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mod--filters .chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mod--filters .wt-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(82,232,232,0.08);
+  border: 1px solid rgba(82,232,232,0.25);
+  border-radius: 8px;
+}
+
+.mod--filters .wt-summary-label {
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(255,255,255,0.6);
+  text-transform: uppercase;
+}
+
+.mod--filters .wt-summary-value {
+  font-size: 16px;
+  font-weight: 900;
+  color: rgba(82,232,232,1);
+}
+
+.mod--filters .wt-race-card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  transition: all 0.2s ease;
+}
+
+.mod--filters .wt-race-card:hover {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.2);
+}
+
+.mod--filters .wt-race-header {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.mod--filters .wt-race-title {
+  font-size: 16px;
+  font-weight: 900;
+  color: rgba(255,255,255,0.95);
+  margin-bottom: 4px;
+}
+
+.mod--filters .wt-race-meta {
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+  font-weight: 700;
+}
+
+.mod--filters .wt-race-results {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mod--filters .wt-result-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.02);
+  transition: all 0.2s ease;
+}
+
+.mod--filters .wt-result-row:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.mod--filters .wt-result-row--medal {
+  background: rgba(82,232,232,0.08);
+  border: 1px solid rgba(82,232,232,0.25);
+}
+
+.mod--filters .wt-result-row--medal:hover {
+  background: rgba(82,232,232,0.12);
+}
+
+.mod--filters .wt-result-pos {
+  font-size: 16px;
+  font-weight: 900;
+  color: rgba(82,232,232,1);
+  min-width: 60px;
+}
+
+.mod--filters .wt-result-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.9);
+}
+
+.mod--filters .wt-result-note {
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+  font-style: italic;
+}

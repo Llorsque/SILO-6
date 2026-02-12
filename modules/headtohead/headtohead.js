@@ -134,6 +134,186 @@ function modal(title, content, onClose){
   return overlay;
 }
 
+function showIndividualStatsModal(name, allFilteredData){
+  // Filter data for this specific rider
+  const riderData = allFilteredData.filter(r => r.skaterName === name);
+  
+  if(riderData.length === 0){
+    alert(`Geen data gevonden voor ${name} met de geselecteerde filters.`);
+    return;
+  }
+  
+  // Helper: Extract last name
+  const getLastName = (fullName) => {
+    const parts = fullName.split(" ");
+    return parts.length > 1 ? parts.slice(0, -1).join(" ") : parts[0];
+  };
+  
+  const shortName = getLastName(name);
+  
+  // Calculate stats
+  const stats = {
+    total: 0,
+    podiums: { gold: 0, silver: 0, bronze: 0 },
+    byDistance: {},
+    recent: [],
+    positions: [],
+    avgPosition: null,
+    bestPosition: null,
+    consistency: 0
+  };
+  
+  // Process all races
+  riderData.forEach((race, idx) => {
+    const pos = Number(race.pos);
+    const opm = race.opmerking;
+    const dist = race.distance || "Onbekend";
+    
+    if(pos){
+      stats.positions.push(pos);
+      stats.total++;
+      
+      // Track best position
+      if(!stats.bestPosition || pos < stats.bestPosition){
+        stats.bestPosition = pos;
+      }
+      
+      // Podiums
+      const runKey = String(race.runKey || "").toLowerCase();
+      const isPodiumRun = runKey === "final a" || runKey === "eindklassement";
+      if(isPodiumRun){
+        if(pos === 1) stats.podiums.gold++;
+        if(pos === 2) stats.podiums.silver++;
+        if(pos === 3) stats.podiums.bronze++;
+      }
+    }
+    
+    // By distance
+    if(!stats.byDistance[dist]){
+      stats.byDistance[dist] = { races: 0, positions: [], avgPos: null };
+    }
+    stats.byDistance[dist].races++;
+    if(pos) stats.byDistance[dist].positions.push(pos);
+    
+    // Recent (last 5)
+    if(idx >= riderData.length - 5){
+      stats.recent.push({ pos: pos || "—", opm: opm });
+    }
+  });
+  
+  // Calculate averages
+  if(stats.positions.length > 0){
+    stats.avgPosition = (stats.positions.reduce((a,b) => a+b, 0) / stats.positions.length).toFixed(1);
+  }
+  
+  // Calculate consistency (standard deviation)
+  const calcStdDev = (arr) => {
+    if(arr.length < 2) return 0;
+    const mean = arr.reduce((a,b) => a+b, 0) / arr.length;
+    const variance = arr.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / arr.length;
+    return Math.sqrt(variance);
+  };
+  stats.consistency = calcStdDev(stats.positions).toFixed(1);
+  
+  // Calculate per-distance averages
+  Object.keys(stats.byDistance).forEach(dist => {
+    const distData = stats.byDistance[dist];
+    if(distData.positions.length > 0){
+      distData.avgPos = (distData.positions.reduce((a,b) => a+b, 0) / distData.positions.length).toFixed(1);
+    }
+  });
+  
+  // Build modal content
+  const sections = [];
+  
+  // Section 1: Overall stats
+  const totalPodiums = stats.podiums.gold + stats.podiums.silver + stats.podiums.bronze;
+  const podiumRate = stats.total > 0 ? ((totalPodiums / stats.total) * 100).toFixed(0) : 0;
+  
+  sections.push(el("div", { class:"stats-section" }, [
+    el("h3", { class:"stats-heading" }, "📊 ALGEMEEN"),
+    el("div", { class:"stats-row" }, `Totaal races: ${riderData.length}`),
+    el("div", { class:"stats-row" }, `Races met positie: ${stats.total}`),
+    el("div", { class:"stats-row" }, `Beste positie: ${stats.bestPosition || "—"}`),
+    el("div", { class:"stats-row" }, `Gemiddelde positie: ${stats.avgPosition || "—"}`),
+    el("div", { style:"height:8px" }),
+    el("div", { class:"stats-row" }, `Podiums: 🥇${stats.podiums.gold} 🥈${stats.podiums.silver} 🥉${stats.podiums.bronze}`),
+    el("div", { class:"stats-row" }, `Podium percentage: ${podiumRate}%`)
+  ]));
+  
+  // Section 2: Per distance
+  const distanceRows = Object.entries(stats.byDistance)
+    .sort((a, b) => b[1].races - a[1].races)
+    .map(([dist, data]) => {
+      return el("div", { class:"distance-stat" }, [
+        el("div", { class:"distance-stat-header" }, `${dist} (${data.races} races)`),
+        el("div", { class:"stats-row" }, `Gemiddelde positie: ${data.avgPos || "—"}`),
+        el("div", { class:"stats-row" }, `Races met positie: ${data.positions.length}`)
+      ]);
+    });
+  
+  sections.push(el("div", { class:"stats-section" }, [
+    el("h3", { class:"stats-heading" }, "🎯 PER AFSTAND"),
+    ...distanceRows
+  ]));
+  
+  // Section 3: Recent form
+  if(stats.recent.length > 0){
+    const formatPos = (pos, opm) => {
+      const posStr = String(pos);
+      return opm ? `${posStr} (${opm})` : posStr;
+    };
+    
+    const recentStr = stats.recent.map(r => formatPos(r.pos, r.opm)).join(' - ');
+    
+    sections.push(el("div", { class:"stats-section" }, [
+      el("h3", { class:"stats-heading" }, `📈 RECENTE VORM (laatste ${stats.recent.length})`),
+      el("div", { class:"stats-row recent-row" }, [
+        el("span", {}, `${shortName}: `),
+        el("span", { class:"recent-record" }, recentStr)
+      ])
+    ]));
+  }
+  
+  // Section 4: Consistency
+  const getConsistencyStars = (stdDev) => {
+    if(stdDev < 1) return "★★★★★ (Zeer consistent)";
+    if(stdDev < 1.5) return "★★★★☆ (Consistent)";
+    if(stdDev < 2.5) return "★★★☆☆ (Gemiddeld)";
+    if(stdDev < 3.5) return "★★☆☆☆ (Wisselvallig)";
+    return "★☆☆☆☆ (Zeer wisselvallig)";
+  };
+  
+  sections.push(el("div", { class:"stats-section" }, [
+    el("h3", { class:"stats-heading" }, "🎲 CONSISTENTIE"),
+    el("div", { class:"stats-row" }, getConsistencyStars(stats.consistency)),
+    el("div", { class:"stats-note" }, `Standaard deviatie: ${stats.consistency}`)
+  ]));
+  
+  // Section 5: Prediction
+  const getPredictionQuality = (avgPos) => {
+    if(!avgPos || avgPos === "—") return "Onvoldoende data";
+    const avg = parseFloat(avgPos);
+    if(avg <= 2) return "Top performer (⌀ top 2)";
+    if(avg <= 4) return "Sterke rijder (⌀ top 4)";
+    if(avg <= 8) return "Middenmoter (⌀ top 8)";
+    return "Ontwikkelend talent";
+  };
+  
+  sections.push(el("div", { class:"stats-section stats-prediction" }, [
+    el("h3", { class:"stats-heading" }, "🔮 ANALYSE"),
+    el("div", { class:"stats-row" }, `Niveau: ${getPredictionQuality(stats.avgPosition)}`),
+    el("div", { class:"stats-row" }, `Podium kans: ${podiumRate}% (gebaseerd op ${stats.total} races)`),
+    stats.bestPosition && stats.bestPosition <= 3 
+      ? el("div", { class:"stats-row" }, `✓ Podium ervaring aanwezig`)
+      : el("div", { class:"stats-row" }, `⚠ Nog geen podium behaald in deze categorie`)
+  ]));
+  
+  const content = el("div", { class:"stats-modal-content" }, sections);
+  const m = modal(`📊 Individuele Statistieken: ${shortName}`, content);
+  document.body.appendChild(m);
+}
+
 function showStatsModal(events, riderA, riderB){
   const stats = calculateStats(events, riderA, riderB);
   const confidence = getConfidenceLevel(stats.total);
@@ -792,7 +972,7 @@ function computeMetrics(filteredRows, riders, allFiltered){
   return { byRider, podium, bestPos, participation, pair, pairDetails };
 }
 
-function riderCard(name, meta, metrics){
+function riderCard(name, meta, metrics, allFilteredData){
   const p = metrics.podium[name];
   const bp = metrics.bestPos[name];
   const part = metrics.participation[name];
@@ -808,6 +988,19 @@ function riderCard(name, meta, metrics){
   lines.push(el("div", { style:"height:6px" }));
   lines.push(el("div", { class:"muted" }, `Hoogste uitslag (beste pos): ${bp ?? "—"}`));
   lines.push(el("div", { class:"muted" }, `Deelnames: ${part.events}`));
+  
+  // Add Stats button
+  const statsBtn = el("button", { 
+    class:"btn-stats", 
+    type:"button",
+    style:"margin-top:12px"
+  }, "📊 Stats & Voorspelling");
+  
+  statsBtn.addEventListener("click", () => {
+    showIndividualStatsModal(name, allFilteredData);
+  });
+  
+  lines.push(statsBtn);
 
   return el("div", { class:"hcard" }, lines);
 }
@@ -1008,14 +1201,14 @@ export async function mountHeadToHead(root){
     if(chosen.length === 2){
       const a = chosen[0], b = chosen[1];
       resultsWrap.appendChild(el("div", { class:"h2hGrid" }, [
-        riderCard(a, meta, metrics),
+        riderCard(a, meta, metrics, allFiltered),
         compareMiddle(a, b, metrics),
-        riderCard(b, meta, metrics),
+        riderCard(b, meta, metrics, allFiltered),
       ]));
     }else{
       // Multi: cards + matrix
       const cards = el("div", { class:"cardsGrid" });
-      for(const n of chosen) cards.appendChild(riderCard(n, meta, metrics));
+      for(const n of chosen) cards.appendChild(riderCard(n, meta, metrics, allFiltered));
       resultsWrap.appendChild(cards);
       resultsWrap.appendChild(el("div", { style:"height:12px" }));
       resultsWrap.appendChild(matrixTable(chosen, metrics));

@@ -135,138 +135,165 @@ function modal(title, content, onClose){
 }
 
 function showIndividualStatsModal(name, allFilteredData, activeFilters){
-  // Filter data for this specific rider
-  const riderData = allFilteredData.filter(r => r.skaterName === name);
-  
-  if(riderData.length === 0){
-    alert(`Geen data gevonden voor ${name} met de geselecteerde filters.`);
-    return;
-  }
-  
-  // Helper: Extract last name
-  const getLastName = (fullName) => {
-    const parts = fullName.split(" ");
-    return parts.length > 1 ? parts.slice(0, -1).join(" ") : parts[0];
-  };
-  
-  const shortName = getLastName(name);
-  
-  // Build filter context string
-  const filterContext = [];
-  if(activeFilters.tournaments.size > 0) {
-    filterContext.push(Array.from(activeFilters.tournaments).map(t => t === "WC" ? "WC/WT" : t).join(", "));
-  }
-  if(activeFilters.distances.size > 0) {
-    filterContext.push(Array.from(activeFilters.distances).join(", "));
-  }
-  if(activeFilters.seasons.size > 0) {
-    const years = Array.from(activeFilters.seasons).sort((a,b) => b-a);
-    if(years.length <= 3) {
-      filterContext.push(years.join(", "));
-    } else {
-      filterContext.push(`${years[0]}-${years[years.length-1]}`);
-    }
-  }
-  if(activeFilters.runFilter !== "none") {
-    filterContext.push(activeFilters.runFilter);
-  }
-  const contextStr = filterContext.length > 0 ? filterContext.join(" | ") : "Alle data";
-  
-  // Calculate stats
-  let totalRaces = riderData.length;
-  let racesWithPos = 0;
-  let podiums = 0;
-  let positions = [];
-  let bestPos = null;
-  let recent = [];
-  
-  riderData.forEach((race, idx) => {
-    const pos = Number(race.pos);
-    const opm = race.opmerking;
+  try {
+    console.log('Opening individual stats for:', name);
+    console.log('All filtered data:', allFilteredData);
+    console.log('Active filters:', activeFilters);
     
-    if(pos){
-      racesWithPos++;
-      positions.push(pos);
+    // Defensive checks
+    if(!allFilteredData || !Array.isArray(allFilteredData)){
+      console.error('Invalid allFilteredData:', allFilteredData);
+      alert('Fout: Geen data beschikbaar');
+      return;
+    }
+    
+    if(!activeFilters){
+      console.error('Invalid activeFilters:', activeFilters);
+      alert('Fout: Geen filter informatie beschikbaar');
+      return;
+    }
+    
+    // Filter data for this specific rider
+    const riderData = allFilteredData.filter(r => r && r.skaterName === name);
+    
+    console.log('Rider data found:', riderData.length, 'races');
+    
+    if(riderData.length === 0){
+      alert(`Geen data gevonden voor ${name} met de geselecteerde filters.`);
+      return;
+    }
+    
+    // Helper: Extract last name
+    const getLastName = (fullName) => {
+      const parts = fullName.split(" ");
+      return parts.length > 1 ? parts.slice(0, -1).join(" ") : parts[0];
+    };
+    
+    const shortName = getLastName(name);
+    
+    // Build filter context string
+    const filterContext = [];
+    if(activeFilters.tournaments && activeFilters.tournaments.size > 0) {
+      filterContext.push(Array.from(activeFilters.tournaments).map(t => t === "WC" ? "WC/WT" : t).join(", "));
+    }
+    if(activeFilters.distances && activeFilters.distances.size > 0) {
+      filterContext.push(Array.from(activeFilters.distances).join(", "));
+    }
+    if(activeFilters.seasons && activeFilters.seasons.size > 0) {
+      const years = Array.from(activeFilters.seasons).sort((a,b) => b-a);
+      if(years.length <= 3) {
+        filterContext.push(years.join(", "));
+      } else {
+        filterContext.push(`${years[0]}-${years[years.length-1]}`);
+      }
+    }
+    if(activeFilters.runFilter && activeFilters.runFilter !== "none") {
+      filterContext.push(activeFilters.runFilter);
+    }
+    const contextStr = filterContext.length > 0 ? filterContext.join(" | ") : "Alle data";
+    
+    // Calculate stats
+    let totalRaces = riderData.length;
+    let racesWithPos = 0;
+    let podiums = 0;
+    let positions = [];
+    let bestPos = null;
+    let recent = [];
+    
+    riderData.forEach((race, idx) => {
+      const pos = Number(race.pos);
+      const opm = race.opmerking;
       
-      if(!bestPos || pos < bestPos) bestPos = pos;
-      if(pos <= 3) podiums++;
-    }
+      if(pos){
+        racesWithPos++;
+        positions.push(pos);
+        
+        if(!bestPos || pos < bestPos) bestPos = pos;
+        if(pos <= 3) podiums++;
+      }
+      
+      // Last 5
+      if(idx >= riderData.length - 5){
+        recent.push({ pos: pos || "—", opm: opm });
+      }
+    });
     
-    // Last 5
-    if(idx >= riderData.length - 5){
-      recent.push({ pos: pos || "—", opm: opm });
-    }
-  });
-  
-  const avgPos = positions.length > 0 
-    ? (positions.reduce((a,b) => a+b, 0) / positions.length).toFixed(1)
-    : "—";
-  
-  const podiumRate = racesWithPos > 0 
-    ? ((podiums / racesWithPos) * 100).toFixed(0)
-    : 0;
-  
-  // Build recent form string
-  const formatPos = (pos, opm) => {
-    const posStr = String(pos);
-    return opm ? `${posStr} (${opm})` : posStr;
-  };
-  const recentStr = recent.map(r => formatPos(r.pos, r.opm)).join(' - ');
-  
-  // Build compact modal
-  const content = el("div", { class:"stats-modal-compact" }, [
-    // Filter context banner
-    el("div", { class:"filter-context-banner" }, [
-      el("div", { class:"filter-context-label" }, "Geselecteerde filters:"),
-      el("div", { class:"filter-context-value" }, contextStr)
-    ]),
+    const avgPos = positions.length > 0 
+      ? (positions.reduce((a,b) => a+b, 0) / positions.length).toFixed(1)
+      : "—";
     
-    el("div", { style:"height:16px" }),
+    const podiumRate = racesWithPos > 0 
+      ? ((podiums / racesWithPos) * 100).toFixed(0)
+      : 0;
     
-    // Main stats - large and clear
-    el("div", { class:"main-stats" }, [
-      el("div", { class:"main-stat-item" }, [
-        el("div", { class:"main-stat-value" }, totalRaces),
-        el("div", { class:"main-stat-label" }, "Totaal races")
+    // Build recent form string
+    const formatPos = (pos, opm) => {
+      const posStr = String(pos);
+      return opm ? `${posStr} (${opm})` : posStr;
+    };
+    const recentStr = recent.map(r => formatPos(r.pos, r.opm)).join(' - ');
+    
+    // Build compact modal
+    const content = el("div", { class:"stats-modal-compact" }, [
+      // Filter context banner
+      el("div", { class:"filter-context-banner" }, [
+        el("div", { class:"filter-context-label" }, "Geselecteerde filters:"),
+        el("div", { class:"filter-context-value" }, contextStr)
       ]),
-      el("div", { class:"main-stat-item" }, [
-        el("div", { class:"main-stat-value" }, bestPos || "—"),
-        el("div", { class:"main-stat-label" }, "Beste positie")
+      
+      el("div", { style:"height:16px" }),
+      
+      // Main stats - large and clear
+      el("div", { class:"main-stats" }, [
+        el("div", { class:"main-stat-item" }, [
+          el("div", { class:"main-stat-value" }, String(totalRaces)),
+          el("div", { class:"main-stat-label" }, "Totaal races")
+        ]),
+        el("div", { class:"main-stat-item" }, [
+          el("div", { class:"main-stat-value" }, bestPos ? String(bestPos) : "—"),
+          el("div", { class:"main-stat-label" }, "Beste positie")
+        ]),
+        el("div", { class:"main-stat-item" }, [
+          el("div", { class:"main-stat-value" }, String(avgPos)),
+          el("div", { class:"main-stat-label" }, "Gemiddelde positie")
+        ]),
+        el("div", { class:"main-stat-item" }, [
+          el("div", { class:"main-stat-value" }, `${podiumRate}%`),
+          el("div", { class:"main-stat-label" }, `Podium rate (${podiums}/${racesWithPos})`)
+        ])
       ]),
-      el("div", { class:"main-stat-item" }, [
-        el("div", { class:"main-stat-value" }, avgPos),
-        el("div", { class:"main-stat-label" }, "Gemiddelde positie")
+      
+      el("div", { style:"height:20px" }),
+      
+      // Recent form
+      el("div", { class:"recent-section" }, [
+        el("div", { class:"recent-title" }, `📈 Laatste ${recent.length} races`),
+        el("div", { class:"recent-positions" }, recentStr)
       ]),
-      el("div", { class:"main-stat-item" }, [
-        el("div", { class:"main-stat-value" }, `${podiumRate}%`),
-        el("div", { class:"main-stat-label" }, `Podium rate (${podiums}/${racesWithPos})`)
+      
+      el("div", { style:"height:16px" }),
+      
+      // Quick notes
+      el("div", { class:"quick-notes" }, [
+        el("div", { class:"note-item" }, `• ${racesWithPos} races met geldige positie van ${totalRaces} totaal`),
+        podiums > 0 
+          ? el("div", { class:"note-item" }, `• ${podiums} podium finishes in deze categorie`)
+          : el("div", { class:"note-item" }, `• Nog geen podium in deze categorie`),
+        positions.length >= 3
+          ? el("div", { class:"note-item" }, `• Voldoende data voor betrouwbare analyse`)
+          : el("div", { class:"note-item" }, `• Beperkte data - voeg meer filters toe voor betere analyse`)
       ])
-    ]),
+    ]);
     
-    el("div", { style:"height:20px" }),
-    
-    // Recent form
-    el("div", { class:"recent-section" }, [
-      el("div", { class:"recent-title" }, `📈 Laatste ${recent.length} races`),
-      el("div", { class:"recent-positions" }, recentStr)
-    ]),
-    
-    el("div", { style:"height:16px" }),
-    
-    // Quick notes
-    el("div", { class:"quick-notes" }, [
-      el("div", { class:"note-item" }, `• ${racesWithPos} races met geldige positie van ${totalRaces} totaal`),
-      podiums > 0 
-        ? el("div", { class:"note-item" }, `• ${podiums} podium finishes in deze categorie`)
-        : el("div", { class:"note-item" }, `• Nog geen podium in deze categorie`),
-      positions.length >= 3
-        ? el("div", { class:"note-item" }, `• Voldoende data voor betrouwbare analyse`)
-        : el("div", { class:"note-item" }, `• Beperkte data - voeg meer filters toe voor betere analyse`)
-    ])
-  ]);
-  
-  const m = modal(`📊 ${shortName} - Individuele Stats`, content);
-  document.body.appendChild(m);
+    console.log('Creating modal...');
+    const m = modal(`📊 ${shortName} - Individuele Stats`, content);
+    console.log('Modal created, appending to body...');
+    document.body.appendChild(m);
+    console.log('Modal appended successfully');
+  } catch(error) {
+    console.error('Error in showIndividualStatsModal:', error);
+    alert(`Fout bij het openen van statistieken: ${error.message}`);
+  }
 }
 
 function showStatsModal(events, riderA, riderB){
@@ -951,8 +978,18 @@ function riderCard(name, meta, metrics, allFilteredData, activeFilters){
     style:"margin-top:12px"
   }, "📊 Stats & Voorspelling");
   
-  statsBtn.addEventListener("click", () => {
-    showIndividualStatsModal(name, allFilteredData, activeFilters);
+  statsBtn.addEventListener("click", (e) => {
+    try {
+      console.log('Stats button clicked for:', name);
+      console.log('allFilteredData length:', allFilteredData ? allFilteredData.length : 'undefined');
+      console.log('activeFilters:', activeFilters);
+      e.preventDefault();
+      e.stopPropagation();
+      showIndividualStatsModal(name, allFilteredData, activeFilters);
+    } catch(error) {
+      console.error('Error in stats button click:', error);
+      alert(`Fout: ${error.message}`);
+    }
   });
   
   lines.push(statsBtn);

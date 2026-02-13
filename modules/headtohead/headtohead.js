@@ -1253,6 +1253,11 @@ export async function mountHeadToHead(root){
   let runFilter = "none"; // Run filter: "none", "all", "Final A", or "Final B"
   const cleanupFns = [];
 
+  // Analytics mode state
+  let mode = "compare"; // "compare" or "analytics"
+  const analyticsRiders = Array(7).fill("");
+  let analyticsRiderCount = 3;
+
   const resultsWrap = el("div", { class:"h2hWrap" });
 
   function activeFiltersSummary(){
@@ -1463,19 +1468,303 @@ export async function mountHeadToHead(root){
     topControls.appendChild(headerRow);
     topControls.appendChild(riderRow);
 
+    // Mode toggle
+    const modeToggle = el("div", { class:"mode-toggle" }, [
+      el("button", {
+        type:"button",
+        class: mode === "compare" ? "mode-toggle-btn mode-toggle-btn--active" : "mode-toggle-btn",
+        onclick: () => { mode = "compare"; render(); }
+      }, "🔀 Compare Mode"),
+      el("button", {
+        type:"button",
+        class: mode === "analytics" ? "mode-toggle-btn mode-toggle-btn--active" : "mode-toggle-btn",
+        onclick: () => { mode = "analytics"; renderAnalyticsMode(); }
+      }, "📊 Analytics Mode")
+    ]);
+
+    const children = [modeToggle];
+    
+    if(mode === "compare"){
+      children.push(topControls, filters, el("div", { style:"height:14px" }), resultsWrap);
+    }
+
     root.appendChild(sectionCard({
-      title:"Head-to-Head",
-      subtitle:"Vergelijk rijders op dezelfde filters (Results-tabblad).",
-      children:[
-        topControls,
-        filters,
-        el("div", { style:"height:14px" }),
-        resultsWrap
-      ]
+      title: mode === "compare" ? "Head-to-Head" : "Analytics & Rapportage",
+      subtitle: mode === "compare" ? "Vergelijk rijders op dezelfde filters (Results-tabblad)." : "Genereer gedetailleerde performance rapporten.",
+      children
     }));
 
     renderResults();
   }
 
+  // ============================================================================
+  // ANALYTICS MODE FUNCTIONS
+  // ============================================================================
+
+  function calculateRiderStats(riderName, filteredData){
+    const riderResults = filteredData.filter(r => r.skaterName === riderName);
+    
+    const totalRaces = riderResults.length;
+    const positions = riderResults.map(r => Number(r.pos)).filter(p => p);
+    
+    const podiums = positions.filter(p => p >= 1 && p <= 3).length;
+    const golds = positions.filter(p => p === 1).length;
+    const silvers = positions.filter(p => p === 2).length;
+    const bronzes = positions.filter(p => p === 3).length;
+    
+    const bestPos = positions.length > 0 ? Math.min(...positions) : null;
+    const avgPos = positions.length > 0 ? (positions.reduce((a,b) => a+b, 0) / positions.length) : null;
+    
+    const podiumRate = totalRaces > 0 ? (podiums / totalRaces * 100) : 0;
+    
+    const consistency = (() => {
+      if(positions.length < 3) return null;
+      const mean = avgPos;
+      const variance = positions.reduce((sum, p) => sum + Math.pow(p - mean, 2), 0) / positions.length;
+      const stdDev = Math.sqrt(variance);
+      const score = Math.max(0, 10 - stdDev);
+      return score;
+    })();
+
+    const recent = riderResults
+      .sort((a, b) => {
+        const da = a.dateISO ? new Date(a.dateISO).getTime() : 0;
+        const db = b.dateISO ? new Date(b.dateISO).getTime() : 0;
+        return db - da;
+      })
+      .slice(0, 5)
+      .map(r => {
+        const pos = Number(r.pos);
+        const remark = r.opmerking && r.opmerking !== "-" ? ` (${r.opmerking})` : "";
+        return pos ? `${pos}${remark}` : "—";
+      });
+
+    return {
+      name: riderName, totalRaces, podiums, golds, silvers, bronzes,
+      bestPos, avgPos, podiumRate, consistency, recentForm: recent,
+      results: riderResults
+    };
+  }
+
+  function createAnalyticsResultsTable(results){
+    const sorted = results.sort((a, b) => {
+      const da = a.dateISO ? new Date(a.dateISO).getTime() : 0;
+      const db = b.dateISO ? new Date(b.dateISO).getTime() : 0;
+      return db - da;
+    });
+
+    const table = el("table", { class:"analytics-table" });
+    table.appendChild(el("thead", null, el("tr", null, [
+      el("th", null, "Datum"), el("th", null, "Toernooi"), el("th", null, "Locatie"),
+      el("th", null, "Afstand"), el("th", null, "Run"), el("th", null, "Pos."),
+      el("th", null, "Opmerking")
+    ])));
+
+    const tbody = el("tbody");
+    sorted.forEach(r => {
+      const pos = Number(r.pos);
+      const isPodium = pos >= 1 && pos <= 3;
+      const medalIcon = pos === 1 ? "🥇" : pos === 2 ? "🥈" : pos === 3 ? "🥉" : "";
+      tbody.appendChild(el("tr", { class: isPodium ? "podium-row" : "" }, [
+        el("td", null, r.datum || "—"), el("td", null, r.tournamentShort || "—"),
+        el("td", null, r.locatie || "—"), el("td", null, r.distance || "—"),
+        el("td", null, r.runKey || "—"),
+        el("td", { style: isPodium ? "font-weight:900" : "" }, pos ? `${medalIcon} ${pos}` : "—"),
+        el("td", { class:"muted" }, r.opmerking && r.opmerking !== "-" ? r.opmerking : "")
+      ]));
+    });
+    table.appendChild(tbody);
+    return table;
+  }
+
+  function generateAnalyticsReport(reportRoot){
+    clear(reportRoot);
+    const chosen = analyticsRiders.slice(0, analyticsRiderCount).filter(Boolean);
+    
+    if(chosen.length === 0){
+      reportRoot.appendChild(el("div", { class:"notice" }, "Selecteer minimaal 1 rijder."));
+      return;
+    }
+    if(!hasAnyFilters()){
+      reportRoot.appendChild(el("div", { class:"notice" }, "Selecteer minimaal één filter."));
+      return;
+    }
+
+    const filteredData = filterData();
+    const stats = chosen.map(name => calculateRiderStats(name, filteredData));
+
+    const reportContent = el("div", { class:"analytics-report-content", id:"analytics-report-content" }, [
+      el("div", { class:"analytics-report-header" }, [
+        el("h1", { class:"analytics-report-title" }, "📊 Rijder Performance Analyse"),
+        el("div", { class:"analytics-report-meta" }, [
+          el("div", {}, `Gegenereerd: ${new Date().toLocaleDateString("nl-NL")}`),
+          el("div", {}, `Dataset: ${meta?.name || "SILO-6"}`),
+          el("div", {}, activeFiltersSummary())
+        ])
+      ]),
+      el("div", { class:"analytics-divider" }),
+      el("div", { class:"analytics-section" }, [
+        el("h2", { class:"analytics-section-title" }, "1. Samenvatting"),
+        el("div", { class:"analytics-riders-list" }, 
+          chosen.map((name, i) => el("div", {}, `• ${name} (${stats[i].totalRaces} races)`))
+        )
+      ]),
+      el("div", { class:"analytics-divider" }),
+      ...stats.map((s, idx) => [
+        el("div", { class:"analytics-section" }, [
+          el("h2", { class:"analytics-section-title" }, `${idx + 2}. ${s.name}`),
+          el("div", { class:"analytics-stats-grid" }, [
+            el("div", { class:"analytics-stat-card" }, [
+              el("div", { class:"analytics-stat-label" }, "Totaal Races"),
+              el("div", { class:"analytics-stat-value" }, String(s.totalRaces))
+            ]),
+            el("div", { class:"analytics-stat-card" }, [
+              el("div", { class:"analytics-stat-label" }, "Podium Finishes"),
+              el("div", { class:"analytics-stat-value" }, `${s.podiums} (${s.podiumRate.toFixed(1)}%)`)
+            ]),
+            el("div", { class:"analytics-stat-card" }, [
+              el("div", { class:"analytics-stat-label" }, "🥇 Goud"),
+              el("div", { class:"analytics-stat-value" }, String(s.golds))
+            ]),
+            el("div", { class:"analytics-stat-card" }, [
+              el("div", { class:"analytics-stat-label" }, "🥈 Zilver"),
+              el("div", { class:"analytics-stat-value" }, String(s.silvers))
+            ]),
+            el("div", { class:"analytics-stat-card" }, [
+              el("div", { class:"analytics-stat-label" }, "🥉 Brons"),
+              el("div", { class:"analytics-stat-value" }, String(s.bronzes))
+            ]),
+            el("div", { class:"analytics-stat-card" }, [
+              el("div", { class:"analytics-stat-label" }, "Beste Positie"),
+              el("div", { class:"analytics-stat-value" }, s.bestPos ? String(s.bestPos) : "—")
+            ]),
+            el("div", { class:"analytics-stat-card" }, [
+              el("div", { class:"analytics-stat-label" }, "Gemiddelde"),
+              el("div", { class:"analytics-stat-value" }, s.avgPos ? s.avgPos.toFixed(1) : "—")
+            ]),
+            el("div", { class:"analytics-stat-card" }, [
+              el("div", { class:"analytics-stat-label" }, "Consistentie"),
+              el("div", { class:"analytics-stat-value" }, s.consistency ? `${s.consistency.toFixed(1)}/10` : "—")
+            ])
+          ]),
+          el("div", { class:"analytics-subsection" }, [
+            el("h3", { class:"analytics-subsection-title" }, "Recente Vorm (laatste 5)"),
+            el("div", { class:"analytics-recent-form" }, s.recentForm.join(" — "))
+          ]),
+          el("div", { class:"analytics-subsection" }, [
+            el("h3", { class:"analytics-subsection-title" }, "Gedetailleerde Resultaten"),
+            createAnalyticsResultsTable(s.results)
+          ])
+        ]),
+        el("div", { class:"analytics-divider" })
+      ]).flat()
+    ]);
+
+    const actions = el("div", { class:"analytics-report-actions" }, [
+      el("button", { class:"btn btn--primary", type:"button", onclick: () => downloadAnalyticsPDF() }, "📥 Download PDF"),
+      el("button", { class:"btn", type:"button", onclick: () => window.print() }, "🖨️ Print")
+    ]);
+
+    reportRoot.appendChild(actions);
+    reportRoot.appendChild(el("div", { style:"height:16px" }));
+    reportRoot.appendChild(reportContent);
+  }
+
+  function downloadAnalyticsPDF(){
+    if(typeof window.jspdf === "undefined"){
+      alert("PDF bibliotheek laadt... Probeer over 2 seconden opnieuw.");
+      return;
+    }
+    const { jsPDF } = window.jspdf;
+    const content = document.getElementById("analytics-report-content");
+    if(!content){ alert("Genereer eerst een rapport."); return; }
+    
+    const doc = new jsPDF('p', 'mm', 'a4');
+    doc.html(content, {
+      callback: (doc) => doc.save(`SILO6-Analytics-${new Date().toISOString().split('T')[0]}.pdf`),
+      x: 10, y: 10, width: 190, windowWidth: 800
+    });
+  }
+
+  function renderAnalyticsMode(){
+    clear(root);
+    
+    const analyticsRoot = el("div", { class:"analytics-mode" });
+    
+    // Rider count selector
+    const countSel = el("select", { class:"input input--sm" });
+    [1,2,3,4,5,6,7].forEach(n => countSel.appendChild(el("option", { value:String(n) }, String(n))));
+    countSel.value = String(analyticsRiderCount);
+    countSel.addEventListener("change", ()=>{ 
+      analyticsRiderCount = Number(countSel.value) || 3; 
+      renderAnalyticsMode();
+    });
+    
+    const riderCountRow = el("div", { style:"display:flex;align-items:center;gap:12px;margin-bottom:12px" }, [
+      el("div", { class:"filter-label" }, "Aantal Rijders"),
+      countSel
+    ]);
+    
+    // Rider dropdowns
+    const riderRow = el("div", { class:"h2hRiders" });
+    for(let i = 0; i < analyticsRiderCount; i++){
+      const dd = typeableDropdown({
+        placeholder: `Rijder ${i+1}...`,
+        value: analyticsRiders[i] || "",
+        options: ["", ...allRiders],
+        onChange: (v)=>{ analyticsRiders[i] = v === "" ? "" : v; }
+      });
+      cleanupFns.push(dd.cleanup);
+      riderRow.appendChild(dd.wrap);
+    }
+    
+    // Generate button
+    const generateBtn = el("button", {
+      class:"btn btn--primary",
+      style:"width:100%;margin-top:16px",
+      type:"button",
+      onclick: () => generateAnalyticsReport(reportWrap)
+    }, "🔍 Genereer Rapport");
+    
+    const reportWrap = el("div", { class:"analytics-report-wrap" });
+    
+    // Mode toggle (reuse from compare)
+    const modeToggle = el("div", { class:"mode-toggle" }, [
+      el("button", {
+        type:"button",
+        class: "mode-toggle-btn",
+        onclick: () => { mode = "compare"; render(); }
+      }, "🔀 Compare Mode"),
+      el("button", {
+        type:"button",
+        class: "mode-toggle-btn mode-toggle-btn--active",
+        onclick: () => { mode = "analytics"; renderAnalyticsMode(); }
+      }, "📊 Analytics Mode")
+    ]);
+    
+    root.appendChild(sectionCard({
+      title:"Analytics & Rapportage",
+      subtitle:"Genereer gedetailleerde performance rapporten voor 1-7 rijders.",
+      children:[
+        modeToggle,
+        el("div", { style:"height:16px" }),
+        riderCountRow,
+        riderRow,
+        el("div", { style:"height:16px" }),
+        filters,
+        generateBtn,
+        el("div", { style:"height:24px" }),
+        reportWrap
+      ]
+    }));
+  }
+
   render();
+
+  // Load jsPDF for PDF export
+  if(typeof window.jspdf === "undefined"){
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+    document.head.appendChild(script);
+  }
 }

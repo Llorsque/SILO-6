@@ -1,273 +1,45 @@
-/* Analytics Module Styles */
+/* Analytics Module - Phase 1 Test Version */
 
-.mod--analytics .analytics-config {
+.mod--analytics .card {
   background: rgba(255,255,255,0.02);
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 12px;
   padding: 20px;
 }
 
-.mod--analytics .report-type-selector {
-  margin-bottom: 16px;
-}
-
-.mod--analytics .config-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.mod--analytics .rider-select-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
-}
-
-.mod--analytics .filters-card {
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 12px;
-  padding: 16px;
-}
-
-.mod--analytics .filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.mod--analytics .filter-label {
-  font-size: 12px;
-  font-weight: 900;
-  color: rgba(255,255,255,0.6);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.mod--analytics .chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.mod--analytics .btn--large {
-  width: 100%;
-  padding: 14px 20px;
-  font-size: 16px;
-  font-weight: 900;
-}
-
-.mod--analytics .analytics-preview {
-  margin-top: 24px;
-}
-
-/* Report Styles */
-.mod--analytics .report-content {
-  background: white;
-  color: #1a1a1a;
-  padding: 40px;
-  border-radius: 8px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.1);
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-.mod--analytics .report-header {
-  margin-bottom: 32px;
-}
-
-.mod--analytics .report-title {
-  font-size: 32px;
-  font-weight: 900;
-  color: #0a0e18;
-  margin-bottom: 16px;
-}
-
-.mod--analytics .report-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 13px;
-  color: #666;
-  font-weight: 600;
-}
-
-.mod--analytics .report-divider {
-  height: 2px;
-  background: linear-gradient(to right, #52e8e8, transparent);
-  margin: 24px 0;
-}
-
-.mod--analytics .report-section {
-  margin-bottom: 32px;
-}
-
-.mod--analytics .report-section-title {
-  font-size: 24px;
-  font-weight: 900;
-  color: #0a0e18;
-  margin-bottom: 16px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #52e8e8;
-}
-
-.mod--analytics .report-riders-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-size: 15px;
-  color: #333;
-  font-weight: 600;
-}
-
-.mod--analytics .report-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.mod--analytics .report-stat-card {
-  background: linear-gradient(135deg, rgba(82,232,232,0.1), rgba(82,232,232,0.05));
-  border: 2px solid rgba(82,232,232,0.3);
-  border-radius: 8px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.mod--analytics .report-stat-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: #666;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.mod--analytics .report-stat-value {
-  font-size: 28px;
-  font-weight: 900;
-  color: #0a0e18;
-  line-height: 1;
-}
-
-.mod--analytics .report-subsection {
-  margin-top: 24px;
-}
-
-.mod--analytics .report-subsection-title {
-  font-size: 16px;
-  font-weight: 900;
-  color: #0a0e18;
-  margin-bottom: 12px;
-}
-
-.mod--analytics .report-recent-form {
+.mod--analytics .card__title {
   font-size: 18px;
-  font-weight: 700;
-  color: #333;
-  padding: 12px 16px;
-  background: rgba(82,232,232,0.08);
-  border-left: 4px solid #52e8e8;
-  border-radius: 4px;
-  font-family: monospace;
-}
-
-.mod--analytics .report-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 12px;
-  font-size: 13px;
-}
-
-.mod--analytics .report-table thead {
-  background: #f5f5f5;
-  border-top: 2px solid #ddd;
-  border-bottom: 2px solid #ddd;
-}
-
-.mod--analytics .report-table th {
-  padding: 10px 12px;
-  text-align: left;
   font-weight: 900;
-  font-size: 11px;
-  color: #666;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  margin-bottom: 8px;
 }
 
-.mod--analytics .report-table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid #e0e0e0;
-  color: #333;
-  font-weight: 600;
+.mod--analytics .hr {
+  height: 1px;
+  background: rgba(255,255,255,0.1);
+  margin: 16px 0;
 }
 
-.mod--analytics .report-table tr.report-table-podium {
+.mod--analytics .notice {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.mod--analytics .btn {
+  padding: 12px 24px;
   background: rgba(82,232,232,0.15);
-}
-
-.mod--analytics .report-table tr.report-table-podium td {
+  border: 1px solid rgba(82,232,232,0.3);
+  border-radius: 8px;
+  color: rgba(82,232,232,1);
   font-weight: 900;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.mod--analytics .report-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  margin-bottom: 16px;
-}
-
-/* Print Styles */
-@media print {
-  .mod--analytics .analytics-config,
-  .mod--analytics .report-actions {
-    display: none !important;
-  }
-
-  .mod--analytics .report-content {
-    box-shadow: none;
-    padding: 20px;
-  }
-
-  .mod--analytics .report-title {
-    color: #000;
-  }
-
-  .mod--analytics .report-section-title {
-    color: #000;
-  }
-
-  .mod--analytics .report-table {
-    page-break-inside: avoid;
-  }
-
-  .mod--analytics .report-section {
-    page-break-inside: avoid;
-  }
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .mod--analytics .rider-select-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .mod--analytics .report-content {
-    padding: 20px;
-  }
-
-  .mod--analytics .report-stats-grid {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  }
-
-  .mod--analytics .report-title {
-    font-size: 24px;
-  }
-
-  .mod--analytics .report-section-title {
-    font-size: 20px;
-  }
+.mod--analytics .btn:hover {
+  background: rgba(82,232,232,0.25);
+  border-color: rgba(82,232,232,0.5);
 }

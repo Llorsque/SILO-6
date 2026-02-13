@@ -740,3 +740,214 @@
 .mod--headtohead .results-table tr.podium-row:hover{
   background: rgba(82,232,232,0.12);
 }
+
+/* ============================================================================
+   ANALYTICS MODE ADDITIONS
+   ============================================================================ */
+
+/* Mode Toggle */
+.mod--headtohead .mode-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 4px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.mod--headtohead .mode-toggle-btn {
+  flex: 1;
+  padding: 12px 20px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: rgba(255,255,255,0.6);
+  font-weight: 900;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mod--headtohead .mode-toggle-btn--active {
+  background: rgba(82,232,232,0.15);
+  border-color: rgba(82,232,232,0.3);
+  color: rgba(82,232,232,1);
+}
+
+.mod--headtohead .mode-toggle-btn:hover:not(.mode-toggle-btn--active) {
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.9);
+}
+
+/* Analytics Report Styles */
+.mod--headtohead .analytics-report-content {
+  background: white;
+  color: #1a1a1a;
+  padding: 40px;
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.mod--headtohead .analytics-report-header {
+  margin-bottom: 32px;
+}
+
+.mod--headtohead .analytics-report-title {
+  font-size: 32px;
+  font-weight: 900;
+  color: #0a0e18;
+  margin-bottom: 16px;
+}
+
+.mod--headtohead .analytics-report-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: #666;
+  font-weight: 600;
+}
+
+.mod--headtohead .analytics-divider {
+  height: 2px;
+  background: linear-gradient(to right, #52e8e8, transparent);
+  margin: 24px 0;
+}
+
+.mod--headtohead .analytics-section {
+  margin-bottom: 32px;
+}
+
+.mod--headtohead .analytics-section-title {
+  font-size: 24px;
+  font-weight: 900;
+  color: #0a0e18;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #52e8e8;
+}
+
+.mod--headtohead .analytics-riders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 15px;
+  color: #333;
+  font-weight: 600;
+}
+
+.mod--headtohead .analytics-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.mod--headtohead .analytics-stat-card {
+  background: linear-gradient(135deg, rgba(82,232,232,0.1), rgba(82,232,232,0.05));
+  border: 2px solid rgba(82,232,232,0.3);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mod--headtohead .analytics-stat-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mod--headtohead .analytics-stat-value {
+  font-size: 28px;
+  font-weight: 900;
+  color: #0a0e18;
+  line-height: 1;
+}
+
+.mod--headtohead .analytics-subsection {
+  margin-top: 24px;
+}
+
+.mod--headtohead .analytics-subsection-title {
+  font-size: 16px;
+  font-weight: 900;
+  color: #0a0e18;
+  margin-bottom: 12px;
+}
+
+.mod--headtohead .analytics-recent-form {
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+  padding: 12px 16px;
+  background: rgba(82,232,232,0.08);
+  border-left: 4px solid #52e8e8;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.mod--headtohead .analytics-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.mod--headtohead .analytics-table thead {
+  background: #f5f5f5;
+  border-top: 2px solid #ddd;
+  border-bottom: 2px solid #ddd;
+}
+
+.mod--headtohead .analytics-table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 900;
+  font-size: 11px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mod--headtohead .analytics-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e0e0e0;
+  color: #333;
+  font-weight: 600;
+}
+
+.mod--headtohead .analytics-table tr.podium-row {
+  background: rgba(82,232,232,0.15);
+}
+
+.mod--headtohead .analytics-table tr.podium-row td {
+  font-weight: 900;
+}
+
+.mod--headtohead .analytics-report-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+/* Print Styles for Analytics Reports */
+@media print {
+  .mod--headtohead .mode-toggle,
+  .mod--headtohead .analytics-report-actions,
+  .mod--headtohead .h2hTop {
+    display: none !important;
+  }
+
+  .mod--headtohead .analytics-report-content {
+    box-shadow: none;
+    padding: 20px;
+  }
+}

@@ -69,7 +69,7 @@ export function mountHome(root){
     menuBtn("Sebastiaans Draaitabel", resultsCount ? "" : "Nog leeg", "dashboard"),
     menuBtn("World Tour Klassementen", resultsCount ? "" : "Nog leeg", "filters"),
     menuBtn("Head-to-Head", resultsCount ? "" : "Nog leeg", "headtohead"),
-    menuBtn("Rapportage & Analytics", resultsCount ? "" : "Nog leeg", "analytics"),
+    // ANALYTICS TEMPORARILY DISABLED - menuBtn("Rapportage & Analytics", resultsCount ? "" : "Nog leeg", "analytics"),
     menuBtn("Kampioenen", resultsCount ? "" : "Nog leeg", "champions"),
     menuBtn("Biografie", resultsCount ? "" : "Nog leeg", "biography"),
     menuBtn("A Final presentation", resultsCount ? "" : "Nog leeg", "finalpresentation"),

@@ -1577,6 +1577,17 @@ export async function mountHeadToHead(root){
     return table;
   }
 
+  // Helper function to filter data for analytics
+  function getFilteredData(){
+    const filters = { 
+      tournaments: tSet, 
+      distances: dSet, 
+      seasons: ySet, 
+      runFilter: runFilter 
+    };
+    return filterRows(dataset.results, filters);
+  }
+
   function generateAnalyticsReport(reportRoot){
     console.log("=== Analytics Report Generation Started ===");
     clear(reportRoot);
@@ -1598,8 +1609,8 @@ export async function mountHeadToHead(root){
       return;
     }
 
-    // Filter data
-    const filteredData = filterData();
+    // Filter data using the correct function
+    const filteredData = getFilteredData();
     console.log("Filtered data count:", filteredData.length);
     
     if(filteredData.length === 0){

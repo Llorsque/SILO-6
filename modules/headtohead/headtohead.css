@@ -976,3 +976,113 @@
   margin-top: 24px;
   min-height: 200px;
 }
+
+/* Comparison Table Styles */
+.mod--headtohead .analytics-comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 13px;
+  background: white;
+}
+
+.mod--headtohead .analytics-comparison-table thead {
+  background: #f5f5f5;
+  border-top: 2px solid #ddd;
+  border-bottom: 2px solid #ddd;
+}
+
+.mod--headtohead .analytics-comparison-table th {
+  padding: 12px;
+  text-align: center;
+  font-weight: 900;
+  font-size: 12px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mod--headtohead .analytics-comparison-table th.corner-cell {
+  text-align: left;
+  background: #e8e8e8;
+}
+
+.mod--headtohead .analytics-comparison-table th.rider-header {
+  background: rgba(82,232,232,0.15);
+  color: #0a0e18;
+  font-weight: 900;
+}
+
+.mod--headtohead .analytics-comparison-table th.total-header {
+  background: #e0f7fa;
+  font-weight: 900;
+}
+
+.mod--headtohead .analytics-comparison-table td {
+  padding: 12px;
+  text-align: center;
+  border-bottom: 1px solid #e0e0e0;
+  border-right: 1px solid #f0f0f0;
+}
+
+.mod--headtohead .analytics-comparison-table td.rider-name-cell {
+  text-align: left;
+  font-weight: 900;
+  background: rgba(82,232,232,0.08);
+  color: #0a0e18;
+  border-right: 2px solid #ddd;
+}
+
+.mod--headtohead .analytics-comparison-table td.diagonal-cell {
+  background: #f5f5f5;
+  color: #999;
+  font-weight: 900;
+}
+
+.mod--headtohead .analytics-comparison-table td.comparison-cell {
+  font-weight: 700;
+}
+
+.mod--headtohead .analytics-comparison-table td.winning-cell {
+  background: rgba(76, 175, 80, 0.15);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.mod--headtohead .analytics-comparison-table td.losing-cell {
+  background: rgba(244, 67, 54, 0.15);
+  border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+.mod--headtohead .analytics-comparison-table td.tied-cell {
+  background: rgba(255, 193, 7, 0.15);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.mod--headtohead .analytics-comparison-table td.total-cell {
+  background: #e0f7fa;
+  font-weight: 900;
+  border-left: 2px solid #ddd;
+  color: #00838f;
+}
+
+.mod--headtohead .h2h-score {
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.mod--headtohead .h2h-percent {
+  font-size: 11px;
+  color: #666;
+  margin-top: 2px;
+}
+
+.mod--headtohead .comparison-info {
+  margin-bottom: 12px;
+  padding: 12px;
+  background: rgba(82,232,232,0.1);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #0a0e18;
+  text-align: center;
+}

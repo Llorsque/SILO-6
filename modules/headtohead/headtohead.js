@@ -1588,6 +1588,132 @@ export async function mountHeadToHead(root){
     return filterRows(dataset.results, filters);
   }
 
+  // Create comparison matrix for analytics
+  function createComparisonMatrix(riders, filteredData){
+    if(riders.length < 2) return null;
+    
+    // Get races where at least 2 of the selected riders competed
+    const racesByKey = new Map();
+    for(const r of filteredData){
+      if(!riders.includes(r.skaterName)) continue;
+      const key = buildEventKey(r);
+      if(!racesByKey.has(key)) racesByKey.set(key, []);
+      racesByKey.get(key).push(r);
+    }
+    
+    // Filter to races with 2+ selected riders
+    const sharedRaces = [];
+    for(const [key, races] of racesByKey){
+      const riderCount = new Set(races.map(r => r.skaterName)).size;
+      if(riderCount >= 2){
+        sharedRaces.push(...races);
+      }
+    }
+    
+    // Compute head-to-head stats
+    const h2h = new Map();
+    for(let i = 0; i < riders.length; i++){
+      for(let j = 0; j < riders.length; j++){
+        if(i === j) continue;
+        const key = `${riders[i]}|${riders[j]}`;
+        h2h.set(key, { wins: 0, total: 0 });
+      }
+    }
+    
+    // Count wins in shared races
+    const events = new Map();
+    for(const r of sharedRaces){
+      const key = buildEventKey(r);
+      if(!events.has(key)) events.set(key, new Map());
+      const mp = events.get(key);
+      const p = Number(r.pos) || 999;
+      const prev = mp.get(r.skaterName) || 999;
+      if(p < prev) mp.set(r.skaterName, p);
+    }
+    
+    for(const [key, positions] of events){
+      const participatingRiders = Array.from(positions.keys()).filter(r => riders.includes(r));
+      if(participatingRiders.length < 2) continue;
+      
+      for(let i = 0; i < participatingRiders.length; i++){
+        for(let j = 0; j < participatingRiders.length; j++){
+          if(i === j) continue;
+          const riderA = participatingRiders[i];
+          const riderB = participatingRiders[j];
+          const posA = positions.get(riderA);
+          const posB = positions.get(riderB);
+          
+          const key = `${riderA}|${riderB}`;
+          const stats = h2h.get(key);
+          stats.total++;
+          if(posA < posB) stats.wins++;
+        }
+      }
+    }
+    
+    return { h2h, sharedRaces: sharedRaces.length / riders.length };
+  }
+
+  // Create comparison table for analytics report
+  function createAnalyticsComparisonTable(riders, comparison){
+    if(!comparison) return el("div", { class:"notice" }, "Vergelijk functie vereist minimaal 2 rijders.");
+    
+    const { h2h, sharedRaces } = comparison;
+    
+    const table = el("table", { class:"analytics-comparison-table" });
+    
+    // Header row
+    const headerRow = el("tr");
+    headerRow.appendChild(el("th", { class:"corner-cell" }, "Rijder"));
+    riders.forEach(rider => {
+      headerRow.appendChild(el("th", { class:"rider-header" }, rider.split(' ').pop())); // Last name
+    });
+    headerRow.appendChild(el("th", { class:"total-header" }, "Totaal W-L"));
+    table.appendChild(el("thead", null, headerRow));
+    
+    // Data rows
+    const tbody = el("tbody");
+    riders.forEach(riderA => {
+      const row = el("tr");
+      row.appendChild(el("td", { class:"rider-name-cell" }, riderA));
+      
+      let totalWins = 0;
+      let totalLosses = 0;
+      
+      riders.forEach(riderB => {
+        if(riderA === riderB){
+          row.appendChild(el("td", { class:"diagonal-cell" }, "—"));
+        } else {
+          const key = `${riderA}|${riderB}`;
+          const stats = h2h.get(key) || { wins: 0, total: 0 };
+          const losses = stats.total - stats.wins;
+          
+          totalWins += stats.wins;
+          totalLosses += losses;
+          
+          const winRate = stats.total > 0 ? (stats.wins / stats.total * 100).toFixed(0) : 0;
+          const cellClass = stats.wins > losses ? "winning-cell" : stats.wins < losses ? "losing-cell" : "tied-cell";
+          
+          row.appendChild(el("td", { class: `comparison-cell ${cellClass}` }, [
+            el("div", { class:"h2h-score" }, `${stats.wins}-${losses}`),
+            el("div", { class:"h2h-percent" }, stats.total > 0 ? `${winRate}%` : "—")
+          ]));
+        }
+      });
+      
+      row.appendChild(el("td", { class:"total-cell" }, `${totalWins}-${totalLosses}`));
+      tbody.appendChild(row);
+    });
+    table.appendChild(tbody);
+    
+    return el("div", null, [
+      el("div", { class:"comparison-info", style:"margin-bottom:12px;padding:12px;background:rgba(82,232,232,0.1);border-radius:8px" }, 
+        `Gebaseerd op ~${Math.round(sharedRaces)} gedeelde races tussen de geselecteerde rijders.`
+      ),
+      table
+    ]);
+  }
+
   function generateAnalyticsReport(reportRoot){
     console.log("=== Analytics Report Generation Started ===");
     clear(reportRoot);
@@ -1621,7 +1747,11 @@ export async function mountHeadToHead(root){
     const stats = chosen.map(name => calculateRiderStats(name, filteredData));
     console.log("Stats calculated for riders:", stats.map(s => `${s.name}: ${s.totalRaces} races`));
 
-    const reportContent = el("div", { class:"analytics-report-content", id:"analytics-report-content" }, [
+    // Calculate comparison stats if 2+ riders
+    const comparison = chosen.length >= 2 ? createComparisonMatrix(chosen, filteredData) : null;
+    console.log("Comparison calculated:", comparison ? `${comparison.sharedRaces} shared races` : "N/A");
+
+    const sections = [
       el("div", { class:"analytics-report-header" }, [
         el("h1", { class:"analytics-report-title" }, "📊 Rijder Performance Analyse"),
         el("div", { class:"analytics-report-meta" }, [
@@ -1631,16 +1761,39 @@ export async function mountHeadToHead(root){
         ])
       ]),
       el("div", { class:"analytics-divider" }),
+      
+      // Summary Section
       el("div", { class:"analytics-section" }, [
         el("h2", { class:"analytics-section-title" }, "1. Samenvatting"),
         el("div", { class:"analytics-riders-list" }, 
           chosen.map((name, i) => el("div", {}, `• ${name} (${stats[i].totalRaces} races)`))
         )
       ]),
-      el("div", { class:"analytics-divider" }),
-      ...stats.map((s, idx) => [
+      el("div", { class:"analytics-divider" })
+    ];
+
+    let sectionNumber = 2;
+
+    // Comparison Section (if 2+ riders)
+    if(comparison){
+      sections.push(
         el("div", { class:"analytics-section" }, [
-          el("h2", { class:"analytics-section-title" }, `${idx + 2}. ${s.name}`),
+          el("h2", { class:"analytics-section-title" }, `${sectionNumber}. Head-to-Head Vergelijking`),
+          el("p", { style:"color:#666;margin-bottom:16px" }, 
+            "Directe vergelijking tussen rijders in dezelfde races. Een hoger winstpercentage betekent dat de rijder vaker hoger eindigde."
+          ),
+          createAnalyticsComparisonTable(chosen, comparison)
+        ]),
+        el("div", { class:"analytics-divider" })
+      );
+      sectionNumber++;
+    }
+
+    // Individual Rider Sections
+    stats.forEach((s, idx) => {
+      sections.push(
+        el("div", { class:"analytics-section" }, [
+          el("h2", { class:"analytics-section-title" }, `${sectionNumber + idx}. ${s.name} - Individuele Statistieken`),
           el("div", { class:"analytics-stats-grid" }, [
             el("div", { class:"analytics-stat-card" }, [
               el("div", { class:"analytics-stat-label" }, "Totaal Races"),
@@ -1685,8 +1838,10 @@ export async function mountHeadToHead(root){
           ])
         ]),
         el("div", { class:"analytics-divider" })
-      ]).flat()
-    ]);
+      );
+    });
+
+    const reportContent = el("div", { class:"analytics-report-content", id:"analytics-report-content" }, sections);
 
     const actions = el("div", { class:"analytics-report-actions" }, [
       el("button", { class:"btn btn--primary", type:"button", onclick: () => downloadAnalyticsPDF() }, "📥 Download PDF"),

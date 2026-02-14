@@ -1555,8 +1555,13 @@ export async function mountHeadToHead(root){
 
     const table = el("table", { class:"analytics-table" });
     table.appendChild(el("thead", null, el("tr", null, [
-      el("th", null, "Datum"), el("th", null, "Toernooi"), el("th", null, "Locatie"),
-      el("th", null, "Afstand"), el("th", null, "Run"), el("th", null, "Pos."),
+      el("th", null, "Datum"), 
+      el("th", null, "Seizoen"),
+      el("th", null, "Toernooi"), 
+      el("th", null, "Locatie"),
+      el("th", null, "Afstand"), 
+      el("th", null, "Run"), 
+      el("th", null, "Pos."),
       el("th", null, "Opmerking")
     ])));
 
@@ -1565,9 +1570,26 @@ export async function mountHeadToHead(root){
       const pos = Number(r.pos);
       const isPodium = pos >= 1 && pos <= 3;
       const medalIcon = pos === 1 ? "🥇" : pos === 2 ? "🥈" : pos === 3 ? "🥉" : "";
+      
+      // Format date properly
+      let dateStr = "—";
+      if(r.dateISO){
+        try {
+          const d = new Date(r.dateISO);
+          dateStr = d.toLocaleDateString("nl-NL", { day: "2-digit", month: "2-digit", year: "numeric" });
+        } catch(e){
+          dateStr = r.datum || "—";
+        }
+      } else if(r.datum && r.datum !== "-"){
+        dateStr = r.datum;
+      }
+      
       tbody.appendChild(el("tr", { class: isPodium ? "podium-row" : "" }, [
-        el("td", null, r.datum || "—"), el("td", null, r.tournamentShort || "—"),
-        el("td", null, r.locatie || "—"), el("td", null, r.distance || "—"),
+        el("td", null, dateStr),
+        el("td", null, r.season ? String(r.season) : "—"),
+        el("td", null, r.tournamentShort || "—"),
+        el("td", null, r.locatie || "—"), 
+        el("td", null, r.distance || "—"),
         el("td", null, r.runKey || "—"),
         el("td", { style: isPodium ? "font-weight:900" : "" }, pos ? `${medalIcon} ${pos}` : "—"),
         el("td", { class:"muted" }, r.opmerking && r.opmerking !== "-" ? r.opmerking : "")
@@ -1792,7 +1814,7 @@ export async function mountHeadToHead(root){
     // Individual Rider Sections
     stats.forEach((s, idx) => {
       sections.push(
-        el("div", { class:"analytics-section" }, [
+        el("div", { class: idx > 0 ? "analytics-section page-break-before" : "analytics-section" }, [
           el("h2", { class:"analytics-section-title" }, `${sectionNumber + idx}. ${s.name} - Individuele Statistieken`),
           el("div", { class:"analytics-stats-grid" }, [
             el("div", { class:"analytics-stat-card" }, [

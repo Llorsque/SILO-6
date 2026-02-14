@@ -950,6 +950,22 @@
     box-shadow: none;
     padding: 20px;
   }
+  
+  /* Page break before each new rider (except first) */
+  .mod--headtohead .page-break-before {
+    page-break-before: always;
+    break-before: page;
+  }
+  
+  /* Avoid breaking tables across pages */
+  .mod--headtohead .analytics-table {
+    page-break-inside: avoid;
+  }
+  
+  /* Keep rider stats together */
+  .mod--headtohead .analytics-section {
+    page-break-inside: avoid;
+  }
 }
 
 /* Notice and Info Messages */

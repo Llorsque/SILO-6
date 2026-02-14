@@ -1773,6 +1773,60 @@ export async function mountHeadToHead(root){
     const comparison = chosen.length >= 2 ? createComparisonMatrix(chosen, filteredData) : null;
     console.log("Comparison calculated:", comparison ? `${comparison.sharedRaces} shared races` : "N/A");
 
+    // Create methodology explanation
+    const methodologySection = el("div", { class:"analytics-methodology" }, [
+      el("h3", { class:"methodology-title" }, "ℹ️ Hoe Dit Rapport Te Lezen"),
+      el("div", { class:"methodology-content" }, [
+        el("div", { class:"methodology-item" }, [
+          el("div", { class:"methodology-label" }, "📊 Gebaseerd Op:"),
+          el("div", { class:"methodology-text" }, 
+            `Dit rapport analyseert ${filteredData.length} race resultaten op basis van de geselecteerde filters. ` +
+            `Alle statistieken zijn berekend over deze gefilterde dataset.`
+          )
+        ]),
+        el("div", { class:"methodology-item" }, [
+          el("div", { class:"methodology-label" }, "🏆 Podium & Medailles:"),
+          el("div", { class:"methodology-text" }, 
+            `Medailles (🥇🥈🥉) worden alleen geteld voor posities 1-3 in 'Final A' of 'Eindklassement' races. ` +
+            `Dit zijn de officiële medaille-wedstrijden volgens de schaatsregels.`
+          )
+        ]),
+        el("div", { class:"methodology-item" }, [
+          el("div", { class:"methodology-label" }, "📈 Consistentie Score:"),
+          el("div", { class:"methodology-text" }, 
+            `Een score van 0-10 die meet hoe stabiel een rijder presteert. ` +
+            `Score 10 = perfect consistent (altijd dezelfde positie). ` +
+            `Score 0 = zeer inconsistent (grote variatie in posities). ` +
+            `Berekend via standaarddeviatie van alle posities.`
+          )
+        ]),
+        comparison ? el("div", { class:"methodology-item" }, [
+          el("div", { class:"methodology-label" }, "🆚 Head-to-Head Vergelijking:"),
+          el("div", { class:"methodology-text" }, 
+            `Deze matrix toont directe vergelijkingen in races waar beide rijders deelnamen. ` +
+            `Een "win" betekent dat de rijder hoger eindigde (lagere positie) dan de tegenstander in dezelfde race. ` +
+            `Bijvoorbeeld: Als Rijder A 2e wordt en Rijder B 4e in dezelfde race, krijgt Rijder A een win. ` +
+            `Het winstpercentage geeft aan hoe vaak een rijder hoger eindigde dan een specifieke tegenstander. ` +
+            `Gebaseerd op ~${Math.round(comparison.sharedRaces)} gedeelde races.`
+          )
+        ]) : null,
+        el("div", { class:"methodology-item" }, [
+          el("div", { class:"methodology-label" }, "📅 Recente Vorm:"),
+          el("div", { class:"methodology-text" }, 
+            `Toont de posities van de laatste 5 races (nieuwste eerst). ` +
+            `Opmerkingen zoals DNS (Did Not Start), DNF (Did Not Finish), of DQ (Disqualified) worden tussen haakjes weergegeven.`
+          )
+        ]),
+        el("div", { class:"methodology-item" }, [
+          el("div", { class:"methodology-label" }, "📋 Gedetailleerde Resultaten:"),
+          el("div", { class:"methodology-text" }, 
+            `Volledige race-per-race tabel gesorteerd van nieuwste naar oudste. ` +
+            `Podium posities (1e, 2e, 3e plaats) zijn gemarkeerd met een lichtblauwe achtergrond voor snelle herkenning.`
+          )
+        ])
+      ])
+    ]);
+
     const sections = [
       el("div", { class:"analytics-report-header" }, [
         el("h1", { class:"analytics-report-title" }, "📊 Rijder Performance Analyse"),
@@ -1782,6 +1836,10 @@ export async function mountHeadToHead(root){
           el("div", {}, activeFiltersSummary())
         ])
       ]),
+      el("div", { class:"analytics-divider" }),
+      
+      // Methodology section
+      methodologySection,
       el("div", { class:"analytics-divider" }),
       
       // Summary Section
@@ -1801,9 +1859,40 @@ export async function mountHeadToHead(root){
       sections.push(
         el("div", { class:"analytics-section" }, [
           el("h2", { class:"analytics-section-title" }, `${sectionNumber}. Head-to-Head Vergelijking`),
-          el("p", { style:"color:#666;margin-bottom:16px" }, 
-            "Directe vergelijking tussen rijders in dezelfde races. Een hoger winstpercentage betekent dat de rijder vaker hoger eindigde."
-          ),
+          el("div", { class:"comparison-explanation" }, [
+            el("p", { style:"color:#666;margin-bottom:12px;line-height:1.6" }, 
+              `Deze matrix toont de directe onderlinge prestaties van rijders in dezelfde races. ` +
+              `Een hogere eindpositie (lager nummer) telt als een 'win' over de tegenstander in die specifieke race.`
+            ),
+            el("div", { class:"comparison-legend" }, [
+              el("div", { class:"legend-title" }, "Hoe te lezen:"),
+              el("div", { class:"legend-items" }, [
+                el("div", { class:"legend-item" }, [
+                  el("span", { class:"legend-label" }, "Getal (bv. 15-8):"),
+                  el("span", { class:"legend-value" }, "15 wins, 8 nederlagen tegen deze tegenstander")
+                ]),
+                el("div", { class:"legend-item" }, [
+                  el("span", { class:"legend-label" }, "Percentage (bv. 65%):"),
+                  el("span", { class:"legend-value" }, "Winstpercentage in directe duels")
+                ]),
+                el("div", { class:"legend-item" }, [
+                  el("span", { class:"legend-label" }, "🟢 Groene cel:"),
+                  el("span", { class:"legend-value" }, "Meer wins dan nederlagen (positieve balans)")
+                ]),
+                el("div", { class:"legend-item" }, [
+                  el("span", { class:"legend-label" }, "🔴 Rode cel:"),
+                  el("span", { class:"legend-value" }, "Meer nederlagen dan wins (negatieve balans)")
+                ]),
+                el("div", { class:"legend-item" }, [
+                  el("span", { class:"legend-label" }, "Totaal Kolom:"),
+                  el("span", { class:"legend-value" }, "Gecombineerde W-L tegen alle tegenstanders")
+                ])
+              ])
+            ]),
+            el("div", { style:"margin-top:12px;padding:12px;background:rgba(82,232,232,0.1);border-radius:8px;font-size:13px" }, 
+              `📍 Gebaseerd op ~${Math.round(comparison.sharedRaces)} gedeelde races tussen de geselecteerde rijders waarin minstens 2 van hen deelnamen.`
+            )
+          ]),
           createAnalyticsComparisonTable(chosen, comparison)
         ]),
         el("div", { class:"analytics-divider" })
@@ -1816,46 +1905,66 @@ export async function mountHeadToHead(root){
       sections.push(
         el("div", { class: idx > 0 ? "analytics-section page-break-before" : "analytics-section" }, [
           el("h2", { class:"analytics-section-title" }, `${sectionNumber + idx}. ${s.name} - Individuele Statistieken`),
+          el("div", { class:"stats-explanation" }, [
+            el("p", { style:"color:#666;margin-bottom:16px;font-size:14px;line-height:1.6" }, 
+              `Onderstaande statistieken zijn gebaseerd op ${s.totalRaces} races die voldoen aan de geselecteerde filters. ` +
+              `Medailles worden alleen geteld voor podium finishes (top 3) in Final A of Eindklassement races.`
+            )
+          ]),
           el("div", { class:"analytics-stats-grid" }, [
             el("div", { class:"analytics-stat-card" }, [
               el("div", { class:"analytics-stat-label" }, "Totaal Races"),
-              el("div", { class:"analytics-stat-value" }, String(s.totalRaces))
+              el("div", { class:"analytics-stat-value" }, String(s.totalRaces)),
+              el("div", { class:"analytics-stat-help" }, "Alle races binnen filters")
             ]),
             el("div", { class:"analytics-stat-card" }, [
               el("div", { class:"analytics-stat-label" }, "Podium Finishes"),
-              el("div", { class:"analytics-stat-value" }, `${s.podiums} (${s.podiumRate.toFixed(1)}%)`)
+              el("div", { class:"analytics-stat-value" }, `${s.podiums} (${s.podiumRate.toFixed(1)}%)`),
+              el("div", { class:"analytics-stat-help" }, "Top 3 posities")
             ]),
             el("div", { class:"analytics-stat-card" }, [
               el("div", { class:"analytics-stat-label" }, "🥇 Goud"),
-              el("div", { class:"analytics-stat-value" }, String(s.golds))
+              el("div", { class:"analytics-stat-value" }, String(s.golds)),
+              el("div", { class:"analytics-stat-help" }, "1e plaats in Final A")
             ]),
             el("div", { class:"analytics-stat-card" }, [
               el("div", { class:"analytics-stat-label" }, "🥈 Zilver"),
-              el("div", { class:"analytics-stat-value" }, String(s.silvers))
+              el("div", { class:"analytics-stat-value" }, String(s.silvers)),
+              el("div", { class:"analytics-stat-help" }, "2e plaats in Final A")
             ]),
             el("div", { class:"analytics-stat-card" }, [
               el("div", { class:"analytics-stat-label" }, "🥉 Brons"),
-              el("div", { class:"analytics-stat-value" }, String(s.bronzes))
+              el("div", { class:"analytics-stat-value" }, String(s.bronzes)),
+              el("div", { class:"analytics-stat-help" }, "3e plaats in Final A")
             ]),
             el("div", { class:"analytics-stat-card" }, [
               el("div", { class:"analytics-stat-label" }, "Beste Positie"),
-              el("div", { class:"analytics-stat-value" }, s.bestPos ? String(s.bestPos) : "—")
+              el("div", { class:"analytics-stat-value" }, s.bestPos ? String(s.bestPos) : "—"),
+              el("div", { class:"analytics-stat-help" }, "Hoogste ranking behaald")
             ]),
             el("div", { class:"analytics-stat-card" }, [
               el("div", { class:"analytics-stat-label" }, "Gemiddelde"),
-              el("div", { class:"analytics-stat-value" }, s.avgPos ? s.avgPos.toFixed(1) : "—")
+              el("div", { class:"analytics-stat-value" }, s.avgPos ? s.avgPos.toFixed(1) : "—"),
+              el("div", { class:"analytics-stat-help" }, "Gemiddelde eindpositie")
             ]),
             el("div", { class:"analytics-stat-card" }, [
               el("div", { class:"analytics-stat-label" }, "Consistentie"),
-              el("div", { class:"analytics-stat-value" }, s.consistency ? `${s.consistency.toFixed(1)}/10` : "—")
+              el("div", { class:"analytics-stat-value" }, s.consistency ? `${s.consistency.toFixed(1)}/10` : "—"),
+              el("div", { class:"analytics-stat-help" }, "10 = zeer stabiel, 0 = variabel")
             ])
           ]),
           el("div", { class:"analytics-subsection" }, [
-            el("h3", { class:"analytics-subsection-title" }, "Recente Vorm (laatste 5)"),
+            el("h3", { class:"analytics-subsection-title" }, "Recente Vorm (laatste 5 races)"),
+            el("div", { style:"color:#666;font-size:13px;margin-bottom:8px" }, 
+              "Nieuwste resultaten eerst. Opmerkingen zoals DNS (Did Not Start) of DNF (Did Not Finish) tussen haakjes."
+            ),
             el("div", { class:"analytics-recent-form" }, s.recentForm.join(" — "))
           ]),
           el("div", { class:"analytics-subsection" }, [
             el("h3", { class:"analytics-subsection-title" }, "Gedetailleerde Resultaten"),
+            el("div", { style:"color:#666;font-size:13px;margin-bottom:8px" }, 
+              "Alle races binnen de geselecteerde filters, gesorteerd van nieuwste naar oudste. Podium posities (1-3) zijn gemarkeerd met een lichtblauwe achtergrond."
+            ),
             createAnalyticsResultsTable(s.results)
           ])
         ]),

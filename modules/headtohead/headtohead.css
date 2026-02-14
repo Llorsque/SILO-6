@@ -951,3 +951,28 @@
     padding: 20px;
   }
 }
+
+/* Notice and Info Messages */
+.mod--headtohead .notice {
+  padding: 20px;
+  background: #fff3cd;
+  border-left: 4px solid #ffc107;
+  border-radius: 8px;
+  margin-top: 16px;
+  font-weight: 600;
+  color: #856404;
+}
+
+.mod--headtohead .analytics-info-message {
+  padding: 24px;
+  background: #e3f2fd;
+  border-radius: 8px;
+  margin-top: 24px;
+  text-align: center;
+  color: #1565c0;
+}
+
+.mod--headtohead .analytics-report-wrap {
+  margin-top: 24px;
+  min-height: 200px;
+}

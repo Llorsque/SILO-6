@@ -1578,20 +1578,37 @@ export async function mountHeadToHead(root){
   }
 
   function generateAnalyticsReport(reportRoot){
+    console.log("=== Analytics Report Generation Started ===");
     clear(reportRoot);
+    
     const chosen = analyticsRiders.slice(0, analyticsRiderCount).filter(Boolean);
+    console.log("Selected riders:", chosen);
     
     if(chosen.length === 0){
-      reportRoot.appendChild(el("div", { class:"notice" }, "Selecteer minimaal 1 rijder."));
+      reportRoot.appendChild(el("div", { class:"notice", style:"padding:20px;background:#fff3cd;border-radius:8px;margin-top:16px" }, "⚠️ Selecteer minimaal 1 rijder."));
       return;
     }
-    if(!hasAnyFilters()){
-      reportRoot.appendChild(el("div", { class:"notice" }, "Selecteer minimaal één filter."));
+    
+    // Check if filters are selected
+    const hasFilters = tSet.size > 0 || dSet.size > 0 || ySet.size > 0 || runFilter !== "none";
+    console.log("Has filters:", hasFilters, { tournaments: tSet.size, distances: dSet.size, seasons: ySet.size, runFilter });
+    
+    if(!hasFilters){
+      reportRoot.appendChild(el("div", { class:"notice", style:"padding:20px;background:#fff3cd;border-radius:8px;margin-top:16px" }, "⚠️ Selecteer minimaal één filter (Toernooi, Afstand, Seizoen of Run)."));
       return;
     }
 
+    // Filter data
     const filteredData = filterData();
+    console.log("Filtered data count:", filteredData.length);
+    
+    if(filteredData.length === 0){
+      reportRoot.appendChild(el("div", { class:"notice", style:"padding:20px;background:#fff3cd;border-radius:8px;margin-top:16px" }, "⚠️ Geen resultaten gevonden met de geselecteerde filters."));
+      return;
+    }
+    
     const stats = chosen.map(name => calculateRiderStats(name, filteredData));
+    console.log("Stats calculated for riders:", stats.map(s => `${s.name}: ${s.totalRaces} races`));
 
     const reportContent = el("div", { class:"analytics-report-content", id:"analytics-report-content" }, [
       el("div", { class:"analytics-report-header" }, [
@@ -1668,6 +1685,13 @@ export async function mountHeadToHead(root){
     reportRoot.appendChild(actions);
     reportRoot.appendChild(el("div", { style:"height:16px" }));
     reportRoot.appendChild(reportContent);
+    
+    console.log("=== Report Generated Successfully ===");
+    
+    // Scroll to report
+    setTimeout(() => {
+      reportContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   }
 
   function downloadAnalyticsPDF(){
@@ -1724,15 +1748,45 @@ export async function mountHeadToHead(root){
       renderAnalyticsMode(); // Re-render to update filter chips
     });
     
-    // Generate button
+    // Generate button with better feedback
     const generateBtn = el("button", {
       class:"btn btn--primary",
-      style:"width:100%;margin-top:16px",
+      style:"width:100%;margin-top:16px;padding:12px;font-size:16px;font-weight:600;cursor:pointer",
       type:"button",
-      onclick: () => generateAnalyticsReport(reportWrap)
+      onclick: (e) => {
+        console.log("Generate button clicked!");
+        e.target.textContent = "⏳ Genereren...";
+        e.target.disabled = true;
+        
+        try {
+          generateAnalyticsReport(reportWrap);
+        } catch(err) {
+          console.error("Error generating report:", err);
+          reportWrap.innerHTML = `<div style="padding:20px;background:#ffebee;border-radius:8px;margin-top:16px;color:#c62828">
+            <strong>❌ Fout bij genereren rapport:</strong><br>
+            ${err.message}<br><br>
+            Open de console (F12) voor meer details.
+          </div>`;
+        } finally {
+          setTimeout(() => {
+            e.target.textContent = "🔍 Genereer Rapport";
+            e.target.disabled = false;
+          }, 500);
+        }
+      }
     }, "🔍 Genereer Rapport");
     
     const reportWrap = el("div", { class:"analytics-report-wrap" });
+    
+    // Add initial helpful message
+    reportWrap.appendChild(el("div", { 
+      class:"analytics-info-message",
+      style:"padding:24px;background:#e3f2fd;border-radius:8px;margin-top:24px;text-align:center;color:#1565c0"
+    }, [
+      el("div", { style:"font-size:48px;margin-bottom:12px" }, "📊"),
+      el("div", { style:"font-weight:600;font-size:18px;margin-bottom:8px" }, "Klaar om te analyseren"),
+      el("div", { style:"font-size:14px" }, "Selecteer rijders en filters hierboven, klik dan op 'Genereer Rapport'")
+    ]));
     
     // Mode toggle
     const modeToggle = el("div", { class:"mode-toggle" }, [

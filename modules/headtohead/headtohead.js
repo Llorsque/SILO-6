@@ -1335,6 +1335,94 @@ export async function mountHeadToHead(root){
     }
   }
 
+  // Create filters UI - reusable for both modes
+  function createFiltersUI(onUpdate){
+    return el("div", { class:"filtersCard", style:"margin-top:12px" }, [
+      el("div", { class:"filtersCard__head" }, [
+        el("div", {}, el("div", { class:"muted" }, "Filters (selecteer minimaal één)")),
+        el("div", { class:"muted" }, meta?.name ? `Dataset: ${meta.name}` : "")
+      ]),
+      
+      // Wedstrijd filter (Tournament)
+      el("div", { class:"filterGroup", style:"margin-top:10px" }, [
+        el("div", { class:"filterLabel" }, "Toernooi"),
+        el("div", { class:"chipRow" }, [
+          // "All" toggle
+          chip("All", tSet.size === tournaments.length, ()=>{
+            if(tSet.size === tournaments.length){
+              tSet.clear();
+            }else{
+              tSet.clear();
+              tournaments.forEach(t => tSet.add(t.key));
+            }
+            onUpdate();
+          }),
+          ...tournaments.map(t =>
+            chip(t.label, tSet.has(t.key), ()=>{
+              normalizeSetToggle(tSet, t.key);
+              onUpdate();
+            })
+          )
+        ])
+      ]),
+      
+      // Afstand filter (Distance)
+      el("div", { class:"filterGroup", style:"margin-top:10px" }, [
+        el("div", { class:"filterLabel" }, "Afstand"),
+        el("div", { class:"chipRow" }, [
+          chip("All", dSet.size === distances.length, ()=>{
+            if(dSet.size === distances.length){
+              dSet.clear();
+            }else{
+              dSet.clear();
+              distances.forEach(d => dSet.add(d.key));
+            }
+            onUpdate();
+          }),
+          ...distances.map(d =>
+            chip(d.label, dSet.has(d.key), ()=>{
+              normalizeSetToggle(dSet, d.key);
+              onUpdate();
+            })
+          )
+        ])
+      ]),
+      
+      // Seizoen filter (Season)
+      el("div", { class:"filterGroup", style:"margin-top:10px" }, [
+        el("div", { class:"filterLabel" }, "Seizoen"),
+        el("div", { class:"chipRow" }, [
+          chip("All", ySet.size === seasons.length, ()=>{
+            if(ySet.size === seasons.length){
+              ySet.clear();
+            }else{
+              ySet.clear();
+              seasons.forEach(y => ySet.add(y));
+            }
+            onUpdate();
+          }),
+          ...seasons.slice().sort((a,b)=>b-a).map(y =>
+            chip(String(y), ySet.has(y), ()=>{
+              normalizeSetToggle(ySet, y);
+              onUpdate();
+            })
+          )
+        ])
+      ]),
+      
+      // Run filter
+      el("div", { class:"filterGroup", style:"margin-top:10px" }, [
+        el("div", { class:"filterLabel" }, "Run"),
+        el("div", { class:"chipRow" }, runFilterOptions.map(opt =>
+          chip(opt.label, runFilter === opt.key, ()=>{
+            runFilter = opt.key;
+            onUpdate();
+          })
+        ))
+      ])
+    ]);
+  }
+
   function render(){
     // cleanup prior dropdown doc listeners
     for(const fn of cleanupFns.splice(0)) try{ fn(); }catch(_){}
@@ -1371,102 +1459,14 @@ export async function mountHeadToHead(root){
       riderRow.appendChild(dd.wrap);
     }
 
-    // Filters - clearly structured with labels
-    const filters = el("div", { class:"filtersCard", style:"margin-top:12px" }, [
-      el("div", { class:"filtersCard__head" }, [
-        el("div", {}, el("div", { class:"muted" }, "Filters (selecteer minimaal één)")),
-        el("div", { class:"muted" }, meta?.name ? `Dataset: ${meta.name}` : "")
-      ]),
-      
-      // Wedstrijd filter
-      el("div", { class:"filterGroup", style:"margin-top:10px" }, [
-        el("div", { class:"filterLabel" }, "Wedstrijd"),
-        el("div", { class:"chipRow" }, [
-          // "All" toggle
-          chip("All", tSet.size === tournaments.length, ()=>{
-            if(tSet.size === tournaments.length){
-              // All selected → deselect all
-              tSet.clear();
-            }else{
-              // Not all selected → select all
-              tSet.clear();
-              tournaments.forEach(t => tSet.add(t.key));
-            }
-            render();
-          }),
-          ...tournaments.map(t =>
-            chip(t.label, tSet.has(t.key), ()=>{
-              normalizeSetToggle(tSet, t.key);
-              render();
-            })
-          )
-        ])
-      ]),
-      
-      // Afstand filter
-      el("div", { class:"filterGroup", style:"margin-top:10px" }, [
-        el("div", { class:"filterLabel" }, "Afstand"),
-        el("div", { class:"chipRow" }, [
-          // "All" toggle
-          chip("All", dSet.size === distances.length, ()=>{
-            if(dSet.size === distances.length){
-              // All selected → deselect all
-              dSet.clear();
-            }else{
-              // Not all selected → select all
-              dSet.clear();
-              distances.forEach(d => dSet.add(d.key));
-            }
-            render();
-          }),
-          ...distances.map(d =>
-            chip(d.label, dSet.has(d.key), ()=>{
-              normalizeSetToggle(dSet, d.key);
-              render();
-            })
-          )
-        ])
-      ]),
-      
-      // Seizoen filter
-      el("div", { class:"filterGroup", style:"margin-top:10px" }, [
-        el("div", { class:"filterLabel" }, "Seizoen"),
-        el("div", { class:"chipRow" }, [
-          // "All" toggle
-          chip("All", ySet.size === seasons.length, ()=>{
-            if(ySet.size === seasons.length){
-              // All selected → deselect all
-              ySet.clear();
-            }else{
-              // Not all selected → select all
-              ySet.clear();
-              seasons.forEach(y => ySet.add(y));
-            }
-            render();
-          }),
-          ...seasons.slice().sort((a,b)=>b-a).map(y =>
-            chip(String(y), ySet.has(y), ()=>{
-              normalizeSetToggle(ySet, y);
-              render();
-            })
-          )
-        ])
-      ]),
-      
-      // Run filter - 4 simple options
-      el("div", { class:"filterGroup", style:"margin-top:10px" }, [
-        el("div", { class:"filterLabel" }, "Run"),
-        el("div", { class:"chipRow" }, runFilterOptions.map(opt =>
-          chip(opt.label, runFilter === opt.key, ()=>{
-            runFilter = opt.key;
-            render(); // Re-render to update chip states
-          })
-        ))
-      ])
-    ]);
-
     topControls.appendChild(headerRow);
     topControls.appendChild(riderRow);
+
+    // Create filters using shared function
+    const filters = createFiltersUI(() => {
+      render();
+      renderResults();
+    });
 
     // Mode toggle
     const modeToggle = el("div", { class:"mode-toggle" }, [
@@ -1687,9 +1687,10 @@ export async function mountHeadToHead(root){
   }
 
   function renderAnalyticsMode(){
-    clear(root);
+    // cleanup prior dropdown doc listeners
+    for(const fn of cleanupFns.splice(0)) try{ fn(); }catch(_){}
     
-    const analyticsRoot = el("div", { class:"analytics-mode" });
+    clear(root);
     
     // Rider count selector
     const countSel = el("select", { class:"input input--sm" });
@@ -1718,6 +1719,11 @@ export async function mountHeadToHead(root){
       riderRow.appendChild(dd.wrap);
     }
     
+    // Create filters using shared function
+    const filters = createFiltersUI(() => {
+      renderAnalyticsMode(); // Re-render to update filter chips
+    });
+    
     // Generate button
     const generateBtn = el("button", {
       class:"btn btn--primary",
@@ -1728,7 +1734,7 @@ export async function mountHeadToHead(root){
     
     const reportWrap = el("div", { class:"analytics-report-wrap" });
     
-    // Mode toggle (reuse from compare)
+    // Mode toggle
     const modeToggle = el("div", { class:"mode-toggle" }, [
       el("button", {
         type:"button",

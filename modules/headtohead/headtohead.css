@@ -1102,6 +1102,291 @@
   margin-bottom: 16px;
 }
 
+/* Medals Summary Table */
+.mod--headtohead .medals-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 14px;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.mod--headtohead .medals-summary-table thead {
+  background: linear-gradient(135deg, #f5f5f5, #e8e8e8);
+  border-top: 2px solid #ddd;
+  border-bottom: 2px solid #ddd;
+}
+
+.mod--headtohead .medals-summary-table th {
+  padding: 12px;
+  text-align: center;
+  font-weight: 900;
+  font-size: 12px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mod--headtohead .medals-summary-table th.rider-col {
+  text-align: left;
+  width: 30%;
+}
+
+.mod--headtohead .medals-summary-table th.medal-col {
+  width: 12%;
+}
+
+.mod--headtohead .medals-summary-table th.gold-col {
+  background: rgba(255, 215, 0, 0.2);
+}
+
+.mod--headtohead .medals-summary-table th.silver-col {
+  background: rgba(192, 192, 192, 0.3);
+}
+
+.mod--headtohead .medals-summary-table th.bronze-col {
+  background: rgba(205, 127, 50, 0.2);
+}
+
+.mod--headtohead .medals-summary-table td {
+  padding: 12px;
+  text-align: center;
+  border-bottom: 1px solid #e0e0e0;
+  font-weight: 600;
+}
+
+.mod--headtohead .medals-summary-table td.rider-name {
+  text-align: left;
+  font-weight: 900;
+  color: #0a0e18;
+}
+
+.mod--headtohead .medals-summary-table td.medal-cell {
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.mod--headtohead .medals-summary-table td.gold-cell {
+  background: rgba(255, 215, 0, 0.15);
+  color: #d4af37;
+}
+
+.mod--headtohead .medals-summary-table td.silver-cell {
+  background: rgba(192, 192, 192, 0.2);
+  color: #888;
+}
+
+.mod--headtohead .medals-summary-table td.bronze-cell {
+  background: rgba(205, 127, 50, 0.15);
+  color: #cd7f32;
+}
+
+.mod--headtohead .medals-summary-table td.total-cell {
+  background: rgba(82, 232, 232, 0.15);
+  font-weight: 900;
+  font-size: 18px;
+  color: #00838f;
+}
+
+.mod--headtohead .medals-summary-table td.podium-cell {
+  font-size: 14px;
+  color: #0a0e18;
+}
+
+.mod--headtohead .medals-summary-table tr.totals-row {
+  background: linear-gradient(135deg, #e8f5e9, #f1f8e9);
+  border-top: 2px solid #4caf50;
+  font-weight: 900;
+}
+
+.mod--headtohead .medals-summary-table tr.totals-row td {
+  border-bottom: 2px solid #4caf50;
+}
+
+/* Prediction Section */
+.mod--headtohead .prediction-section {
+  background: linear-gradient(135deg, #fff9e6 0%, #fffef7 100%);
+  border: 2px solid #ffc107;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.mod--headtohead .prediction-warning {
+  background: linear-gradient(135deg, #ffebee 0%, #fff3f3 100%);
+  border: 2px solid #ef5350;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.mod--headtohead .warning-title {
+  font-size: 16px;
+  font-weight: 900;
+  color: #c62828;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mod--headtohead .warning-content p {
+  color: #424242;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.mod--headtohead .warning-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 12px 0;
+}
+
+.mod--headtohead .warning-list li {
+  padding: 6px 0;
+  color: #555;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.mod--headtohead .prediction-explanation {
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.mod--headtohead .prediction-subtitle {
+  font-size: 16px;
+  font-weight: 900;
+  color: #0a0e18;
+  margin-bottom: 12px;
+}
+
+.mod--headtohead .prediction-legend {
+  background: #f8f9fa;
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 12px;
+}
+
+/* Prediction Table */
+.mod--headtohead .prediction-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 13px;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.mod--headtohead .prediction-table thead {
+  background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+  border-top: 2px solid #ff9800;
+  border-bottom: 2px solid #ff9800;
+}
+
+.mod--headtohead .prediction-table th {
+  padding: 10px 8px;
+  text-align: center;
+  font-weight: 900;
+  font-size: 11px;
+  color: #e65100;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid #ffcc80;
+}
+
+.mod--headtohead .prediction-table th.rider-col {
+  text-align: left;
+}
+
+.mod--headtohead .prediction-table th.medals-header {
+  background: linear-gradient(135deg, #fff9c4, #ffeb3b);
+  color: #f57f17;
+}
+
+.mod--headtohead .prediction-table th.position-header {
+  background: linear-gradient(135deg, #e1f5fe, #b3e5fc);
+  color: #01579b;
+}
+
+.mod--headtohead .prediction-table td {
+  padding: 10px 8px;
+  text-align: center;
+  border: 1px solid #f0f0f0;
+  font-weight: 600;
+}
+
+.mod--headtohead .prediction-table td.rider-name {
+  text-align: left;
+  font-weight: 900;
+  color: #0a0e18;
+}
+
+.mod--headtohead .prediction-table td.chance-cell {
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.mod--headtohead .prediction-table td.gold-chance {
+  background: rgba(255, 215, 0, 0.15);
+  color: #d4af37;
+}
+
+.mod--headtohead .prediction-table td.silver-chance {
+  background: rgba(192, 192, 192, 0.2);
+  color: #888;
+}
+
+.mod--headtohead .prediction-table td.bronze-chance {
+  background: rgba(205, 127, 50, 0.15);
+  color: #cd7f32;
+}
+
+.mod--headtohead .prediction-table td.podium-chance {
+  background: rgba(82, 232, 232, 0.15);
+  color: #00838f;
+}
+
+.mod--headtohead .prediction-table td.top5-chance {
+  background: rgba(33, 150, 243, 0.1);
+  color: #1976d2;
+}
+
+.mod--headtohead .prediction-table td.trend-cell {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mod--headtohead .prediction-table td.trending-up {
+  color: #4caf50;
+}
+
+.mod--headtohead .prediction-table td.trending-down {
+  color: #f44336;
+}
+
+.mod--headtohead .prediction-table td.trending-stable {
+  color: #ff9800;
+}
+
+.mod--headtohead .prediction-table td.sample-cell {
+  font-size: 12px;
+  color: #666;
+}
+
+.mod--headtohead .prediction-note {
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(255, 193, 7, 0.1);
+  border-left: 4px solid #ffc107;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #424242;
+  line-height: 1.6;
+}
+
 /* Stat Card Help Text */
 .mod--headtohead .analytics-stat-help {
   font-size: 11px;

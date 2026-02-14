@@ -1736,6 +1736,234 @@ export async function mountHeadToHead(root){
     ]);
   }
 
+  // Create medals summary table
+  function createMedalsSummaryTable(stats){
+    const table = el("table", { class:"medals-summary-table" });
+    
+    // Header
+    table.appendChild(el("thead", null, el("tr", null, [
+      el("th", { class:"rider-col" }, "Rijder"),
+      el("th", { class:"medal-col gold-col" }, "🥇 Goud"),
+      el("th", { class:"medal-col silver-col" }, "🥈 Zilver"),
+      el("th", { class:"medal-col bronze-col" }, "🥉 Brons"),
+      el("th", { class:"total-col" }, "Totaal Medailles"),
+      el("th", { class:"podium-col" }, "Podium %")
+    ])));
+    
+    // Body
+    const tbody = el("tbody");
+    let totalGold = 0, totalSilver = 0, totalBronze = 0;
+    
+    stats.forEach(s => {
+      totalGold += s.golds;
+      totalSilver += s.silvers;
+      totalBronze += s.bronzes;
+      
+      const totalMedals = s.golds + s.silvers + s.bronzes;
+      
+      tbody.appendChild(el("tr", null, [
+        el("td", { class:"rider-name" }, s.name),
+        el("td", { class:"medal-cell gold-cell" }, String(s.golds)),
+        el("td", { class:"medal-cell silver-cell" }, String(s.silvers)),
+        el("td", { class:"medal-cell bronze-cell" }, String(s.bronzes)),
+        el("td", { class:"total-cell" }, String(totalMedals)),
+        el("td", { class:"podium-cell" }, `${s.podiumRate.toFixed(1)}%`)
+      ]));
+    });
+    
+    // Footer with totals
+    const totalMedalsAll = totalGold + totalSilver + totalBronze;
+    tbody.appendChild(el("tr", { class:"totals-row" }, [
+      el("td", { class:"rider-name" }, el("strong", null, "Totaal")),
+      el("td", { class:"medal-cell gold-cell" }, el("strong", null, String(totalGold))),
+      el("td", { class:"medal-cell silver-cell" }, el("strong", null, String(totalSilver))),
+      el("td", { class:"medal-cell bronze-cell" }, el("strong", null, String(totalBronze))),
+      el("td", { class:"total-cell" }, el("strong", null, String(totalMedalsAll))),
+      el("td", { class:"podium-cell" }, "—")
+    ]));
+    
+    table.appendChild(tbody);
+    return table;
+  }
+
+  // Create prediction section
+  function createPredictionSection(stats, filteredData){
+    if(stats.length === 0) return null;
+    
+    // Calculate predictions based on historical performance
+    const predictions = stats.map(s => {
+      const races = s.totalRaces;
+      if(races < 3) return null; // Need at least 3 races for meaningful prediction
+      
+      // Medal chances
+      const goldChance = races > 0 ? (s.golds / races * 100) : 0;
+      const silverChance = races > 0 ? (s.silvers / races * 100) : 0;
+      const bronzeChance = races > 0 ? (s.bronzes / races * 100) : 0;
+      const podiumChance = s.podiumRate;
+      
+      // Top 5 chance
+      const top5Count = s.results.filter(r => {
+        const pos = Number(r.pos);
+        return pos >= 1 && pos <= 5;
+      }).length;
+      const top5Chance = races > 0 ? (top5Count / races * 100) : 0;
+      
+      // Top 10 chance
+      const top10Count = s.results.filter(r => {
+        const pos = Number(r.pos);
+        return pos >= 1 && pos <= 10;
+      }).length;
+      const top10Chance = races > 0 ? (top10Count / races * 100) : 0;
+      
+      // Recent form trend (last 5 vs overall average)
+      const recentPositions = s.results
+        .sort((a, b) => {
+          const da = a.dateISO ? new Date(a.dateISO).getTime() : 0;
+          const db = b.dateISO ? new Date(b.dateISO).getTime() : 0;
+          return db - da;
+        })
+        .slice(0, 5)
+        .map(r => Number(r.pos))
+        .filter(p => p);
+      
+      const recentAvg = recentPositions.length > 0 
+        ? recentPositions.reduce((a,b) => a+b, 0) / recentPositions.length 
+        : s.avgPos;
+      
+      let trend = "stabiel";
+      if(recentAvg && s.avgPos){
+        if(recentAvg < s.avgPos - 0.5) trend = "stijgend";
+        else if(recentAvg > s.avgPos + 0.5) trend = "dalend";
+      }
+      
+      return {
+        name: s.name,
+        goldChance,
+        silverChance,
+        bronzeChance,
+        podiumChance,
+        top5Chance,
+        top10Chance,
+        avgPos: s.avgPos,
+        consistency: s.consistency,
+        trend,
+        races
+      };
+    }).filter(Boolean);
+    
+    if(predictions.length === 0) return null;
+    
+    return el("div", { class:"analytics-section prediction-section" }, [
+      el("h2", { class:"analytics-section-title" }, `${stats.length + 2}. Voorspelling & Winkansen`),
+      
+      // Warning box
+      el("div", { class:"prediction-warning" }, [
+        el("div", { class:"warning-title" }, "⚠️ Belangrijke Kanttekeningen"),
+        el("div", { class:"warning-content" }, [
+          el("p", null, 
+            "Deze voorspellingen zijn gebaseerd op historische prestaties binnen de geselecteerde filters. " +
+            "Werkelijke resultaten kunnen sterk afwijken door:"
+          ),
+          el("ul", { class:"warning-list" }, [
+            el("li", null, "🏃 Huidige vorm en conditie van de rijders"),
+            el("li", null, "🏥 Blessures of ziekte"),
+            el("li", null, "🌍 Specifieke baan eigenschappen en omstandigheden"),
+            el("li", null, "👥 Samenstelling van het deelnemersveld"),
+            el("li", null, "🎯 Race strategie en tactiek"),
+            el("li", null, "🎲 Onvoorziene gebeurtenissen (vallen, diskwalificaties)"),
+            el("li", null, "📅 Tijd tussen races en trainingsperiodes"),
+            el("li", null, "💪 Mentale gesteldheid en motivatie")
+          ]),
+          el("p", { style:"margin-top:12px;font-weight:600" }, 
+            "Gebruik deze percentages als indicatie, niet als garantie. Schaatsen blijft een dynamische sport!"
+          )
+        ])
+      ]),
+      
+      el("div", { style:"height:20px" }),
+      
+      // Explanation
+      el("div", { class:"prediction-explanation" }, [
+        el("h3", { class:"prediction-subtitle" }, "Hoe Dit Te Interpreteren"),
+        el("p", null, 
+          `Deze voorspellingen zijn berekend op basis van ${filteredData.length} historische race resultaten ` +
+          `die voldoen aan de geselecteerde filters. De percentages geven aan hoe vaak een rijder historisch ` +
+          `een bepaald resultaat heeft behaald onder vergelijkbare omstandigheden.`
+        ),
+        el("div", { class:"prediction-legend" }, [
+          el("div", { class:"legend-item" }, [
+            el("span", { class:"legend-label" }, "Medaille Kans:"),
+            el("span", { class:"legend-value" }, "% van races waarin deze medaille werd gewonnen")
+          ]),
+          el("div", { class:"legend-item" }, [
+            el("span", { class:"legend-label" }, "Podium Kans:"),
+            el("span", { class:"legend-value" }, "% van races met top 3 finish")
+          ]),
+          el("div", { class:"legend-item" }, [
+            el("span", { class:"legend-label" }, "Vorm Trend:"),
+            el("span", { class:"legend-value" }, "Vergelijking laatste 5 races vs gemiddelde (↗️ stijgend, → stabiel, ↘️ dalend)")
+          ])
+        ])
+      ]),
+      
+      el("div", { style:"height:20px" }),
+      
+      // Prediction table
+      createPredictionTable(predictions)
+    ]);
+  }
+
+  // Create prediction table
+  function createPredictionTable(predictions){
+    const table = el("table", { class:"prediction-table" });
+    
+    // Header
+    table.appendChild(el("thead", null, [
+      el("tr", null, [
+        el("th", { rowspan: 2, class:"rider-col" }, "Rijder"),
+        el("th", { colspan: 3, class:"medals-header" }, "Medaille Kansen"),
+        el("th", { colspan: 2, class:"position-header" }, "Positie Kansen"),
+        el("th", { rowspan: 2, class:"trend-col" }, "Vorm"),
+        el("th", { rowspan: 2, class:"sample-col" }, "Basis")
+      ]),
+      el("tr", null, [
+        el("th", { class:"gold-col" }, "🥇"),
+        el("th", { class:"silver-col" }, "🥈"),
+        el("th", { class:"bronze-col" }, "🥉"),
+        el("th", { class:"podium-col" }, "Podium"),
+        el("th", { class:"top5-col" }, "Top 5")
+      ])
+    ]));
+    
+    // Body
+    const tbody = el("tbody");
+    predictions.forEach(p => {
+      const trendIcon = p.trend === "stijgend" ? "↗️" : p.trend === "dalend" ? "↘️" : "→";
+      const trendClass = p.trend === "stijgend" ? "trending-up" : p.trend === "dalend" ? "trending-down" : "trending-stable";
+      
+      tbody.appendChild(el("tr", null, [
+        el("td", { class:"rider-name" }, p.name),
+        el("td", { class:"chance-cell gold-chance" }, `${p.goldChance.toFixed(1)}%`),
+        el("td", { class:"chance-cell silver-chance" }, `${p.silverChance.toFixed(1)}%`),
+        el("td", { class:"chance-cell bronze-chance" }, `${p.bronzeChance.toFixed(1)}%`),
+        el("td", { class:"chance-cell podium-chance" }, `${p.podiumChance.toFixed(1)}%`),
+        el("td", { class:"chance-cell top5-chance" }, `${p.top5Chance.toFixed(1)}%`),
+        el("td", { class:`trend-cell ${trendClass}` }, `${trendIcon} ${p.trend}`),
+        el("td", { class:"sample-cell" }, `${p.races} races`)
+      ]));
+    });
+    
+    table.appendChild(tbody);
+    
+    return el("div", null, [
+      table,
+      el("div", { class:"prediction-note" }, 
+        "💡 Hogere percentages = grotere historische kans op dit resultaat. " +
+        "Houd rekening met de kanttekeningen hierboven voor een realistische interpretatie."
+      )
+    ]);
+  }
+
   function generateAnalyticsReport(reportRoot){
     console.log("=== Analytics Report Generation Started ===");
     clear(reportRoot);
@@ -1842,12 +2070,18 @@ export async function mountHeadToHead(root){
       methodologySection,
       el("div", { class:"analytics-divider" }),
       
-      // Summary Section
+      // Summary Section with Medals Table
       el("div", { class:"analytics-section" }, [
-        el("h2", { class:"analytics-section-title" }, "1. Samenvatting"),
+        el("h2", { class:"analytics-section-title" }, "1. Samenvatting & Medaille Overzicht"),
         el("div", { class:"analytics-riders-list" }, 
           chosen.map((name, i) => el("div", {}, `• ${name} (${stats[i].totalRaces} races)`))
-        )
+        ),
+        el("div", { style:"height:20px" }),
+        el("h3", { class:"analytics-subsection-title" }, "Medaille Telling"),
+        el("div", { style:"color:#666;font-size:13px;margin-bottom:12px" }, 
+          "Medailles in Final A en Eindklassement races binnen de geselecteerde filters."
+        ),
+        createMedalsSummaryTable(stats)
       ]),
       el("div", { class:"analytics-divider" })
     ];
@@ -1897,6 +2131,13 @@ export async function mountHeadToHead(root){
         ]),
         el("div", { class:"analytics-divider" })
       );
+      sectionNumber++;
+    }
+
+    // Prediction Section
+    const predictionSection = createPredictionSection(stats, filteredData);
+    if(predictionSection){
+      sections.push(predictionSection, el("div", { class:"analytics-divider" }));
       sectionNumber++;
     }
 

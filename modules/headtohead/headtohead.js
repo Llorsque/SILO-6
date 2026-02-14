@@ -1867,7 +1867,7 @@ export async function mountHeadToHead(root){
 
     const actions = el("div", { class:"analytics-report-actions" }, [
       el("button", { class:"btn btn--primary", type:"button", onclick: () => downloadAnalyticsPDF() }, "📥 Download PDF"),
-      el("button", { class:"btn", type:"button", onclick: () => window.print() }, "🖨️ Print")
+      el("button", { class:"btn", type:"button", onclick: () => printAnalyticsReport() }, "🖨️ Print")
     ]);
 
     reportRoot.appendChild(actions);
@@ -1883,19 +1883,152 @@ export async function mountHeadToHead(root){
   }
 
   function downloadAnalyticsPDF(){
-    if(typeof window.jspdf === "undefined"){
+    const content = document.getElementById("analytics-report-content");
+    if(!content){ 
+      alert("Genereer eerst een rapport."); 
+      return; 
+    }
+    
+    // Check if libraries are loaded
+    if(typeof window.jspdf === "undefined" || typeof window.html2canvas === "undefined"){
       alert("PDF bibliotheek laadt... Probeer over 2 seconden opnieuw.");
       return;
     }
-    const { jsPDF } = window.jspdf;
-    const content = document.getElementById("analytics-report-content");
-    if(!content){ alert("Genereer eerst een rapport."); return; }
     
-    const doc = new jsPDF('p', 'mm', 'a4');
-    doc.html(content, {
-      callback: (doc) => doc.save(`SILO6-Analytics-${new Date().toISOString().split('T')[0]}.pdf`),
-      x: 10, y: 10, width: 190, windowWidth: 800
-    });
+    const { jsPDF } = window.jspdf;
+    const html2canvas = window.html2canvas;
+    
+    // Show loading message
+    const loadingMsg = el("div", {
+      style: "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:30px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:10000;text-align:center"
+    }, [
+      el("div", { style:"font-size:48px;margin-bottom:16px" }, "📄"),
+      el("div", { style:"font-size:18px;font-weight:700;margin-bottom:8px" }, "PDF wordt gegenereerd..."),
+      el("div", { style:"font-size:14px;color:#666" }, "Dit kan enkele seconden duren")
+    ]);
+    document.body.appendChild(loadingMsg);
+    
+    // Wait a moment for UI to update
+    setTimeout(() => {
+      html2canvas(content, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      }).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        
+        const imgWidth = 210; // A4 width in mm
+        const pageHeight = 297; // A4 height in mm
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let heightLeft = imgHeight;
+        let position = 0;
+        
+        // Add first page
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+        
+        // Add additional pages if needed
+        while (heightLeft > 0) {
+          position = heightLeft - imgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+        
+        pdf.save(`SILO6-Analytics-${new Date().toISOString().split('T')[0]}.pdf`);
+        document.body.removeChild(loadingMsg);
+      }).catch(err => {
+        console.error("PDF generation error:", err);
+        document.body.removeChild(loadingMsg);
+        alert("Fout bij PDF genereren. Probeer de print functie.");
+      });
+    }, 100);
+  }
+  
+  function printAnalyticsReport(){
+    const content = document.getElementById("analytics-report-content");
+    if(!content){ 
+      alert("Genereer eerst een rapport."); 
+      return; 
+    }
+    
+    // Create a print window with the report content
+    const printWindow = window.open('', '_blank');
+    if(!printWindow){
+      alert("Pop-up geblokkeerd. Sta pop-ups toe en probeer opnieuw.");
+      return;
+    }
+    
+    // Get the CSS styles
+    const styles = Array.from(document.styleSheets)
+      .map(sheet => {
+        try {
+          return Array.from(sheet.cssRules)
+            .map(rule => rule.cssText)
+            .join('\n');
+        } catch(e) {
+          return '';
+        }
+      })
+      .join('\n');
+    
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>SILO-6 Analytics Report</title>
+        <style>
+          ${styles}
+          
+          /* Additional print styles */
+          body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          }
+          
+          .analytics-report-content {
+            max-width: 100%;
+            background: white;
+          }
+          
+          .page-break-before {
+            page-break-before: always;
+            break-before: page;
+          }
+          
+          .analytics-table {
+            page-break-inside: avoid;
+            width: 100%;
+            font-size: 10px;
+          }
+          
+          .analytics-section {
+            page-break-inside: avoid;
+          }
+          
+          @media print {
+            body {
+              padding: 0;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        ${content.outerHTML}
+      </body>
+      </html>
+    `);
+    
+    printWindow.document.close();
+    
+    // Wait for content to load, then print
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
   }
 
   function renderAnalyticsMode(){
@@ -2009,10 +2142,16 @@ export async function mountHeadToHead(root){
 
   render();
 
-  // Load jsPDF for PDF export
+  // Load jsPDF and html2canvas for PDF export
   if(typeof window.jspdf === "undefined"){
     const script = document.createElement("script");
     script.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+    document.head.appendChild(script);
+  }
+  
+  if(typeof window.html2canvas === "undefined"){
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
     document.head.appendChild(script);
   }
 }

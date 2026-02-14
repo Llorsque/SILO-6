@@ -1506,3 +1506,298 @@
   color: #0a0e18;
   text-align: center;
 }
+
+
+/* Executive Summary Styles - Added for final page */
+/* Executive Summary */
+.mod--headtohead .executive-summary {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 30px;
+  border-radius: 12px;
+  margin-top: 24px;
+}
+
+.mod--headtohead .summary-header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 3px solid #1976d2;
+}
+
+.mod--headtohead .summary-title {
+  font-size: 28px;
+  font-weight: 900;
+  color: #0a0e18;
+  margin-bottom: 8px;
+}
+
+.mod--headtohead .summary-subtitle {
+  font-size: 14px;
+  color: #666;
+  font-weight: 600;
+}
+
+.mod--headtohead .summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.mod--headtohead .summary-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mod--headtohead .summary-box {
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.mod--headtohead .summary-box.full-width {
+  grid-column: 1 / -1;
+}
+
+.mod--headtohead .summary-box-title {
+  font-size: 16px;
+  font-weight: 900;
+  color: #1976d2;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mod--headtohead .summary-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mod--headtohead .summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.mod--headtohead .summary-item:last-child {
+  border-bottom: none;
+}
+
+.mod--headtohead .summary-item.highlight {
+  background: rgba(82, 232, 232, 0.1);
+  padding: 10px 12px;
+  border-radius: 6px;
+  border-bottom: none;
+  margin: 4px 0;
+}
+
+.mod--headtohead .summary-label {
+  font-weight: 700;
+  font-size: 13px;
+  color: #555;
+}
+
+.mod--headtohead .summary-value {
+  font-weight: 900;
+  font-size: 14px;
+  color: #0a0e18;
+}
+
+.mod--headtohead .summary-value.small {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Medals Overview */
+.mod--headtohead .medals-overview {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.mod--headtohead .medal-count {
+  text-align: center;
+  padding: 16px 12px;
+  border-radius: 8px;
+  border: 2px solid;
+}
+
+.mod--headtohead .medal-count.gold {
+  background: rgba(255, 215, 0, 0.2);
+  border-color: #ffd700;
+}
+
+.mod--headtohead .medal-count.silver {
+  background: rgba(192, 192, 192, 0.3);
+  border-color: #c0c0c0;
+}
+
+.mod--headtohead .medal-count.bronze {
+  background: rgba(205, 127, 50, 0.2);
+  border-color: #cd7f32;
+}
+
+.mod--headtohead .medal-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.mod--headtohead .medal-number {
+  font-size: 28px;
+  font-weight: 900;
+  color: #0a0e18;
+  margin-bottom: 4px;
+}
+
+.mod--headtohead .medal-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #666;
+  text-transform: uppercase;
+}
+
+/* H2H Winner Display */
+.mod--headtohead .h2h-winner {
+  text-align: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  border-radius: 8px;
+  border: 2px solid #42a5f5;
+}
+
+.mod--headtohead .winner-name {
+  font-size: 20px;
+  font-weight: 900;
+  color: #0d47a1;
+  margin-bottom: 8px;
+}
+
+.mod--headtohead .winner-stats {
+  font-size: 24px;
+  font-weight: 900;
+  color: #1976d2;
+  margin-bottom: 6px;
+}
+
+.mod--headtohead .winner-note {
+  font-size: 12px;
+  color: #666;
+  font-weight: 600;
+}
+
+/* Compact Comparison Table */
+.mod--headtohead .compact-comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 12px;
+}
+
+.mod--headtohead .compact-comparison-table thead {
+  background: #f5f5f5;
+  border-top: 2px solid #ddd;
+  border-bottom: 2px solid #ddd;
+}
+
+.mod--headtohead .compact-comparison-table th {
+  padding: 10px 8px;
+  text-align: center;
+  font-weight: 900;
+  font-size: 11px;
+  color: #666;
+  text-transform: uppercase;
+}
+
+.mod--headtohead .compact-comparison-table th:first-child {
+  text-align: left;
+}
+
+.mod--headtohead .compact-comparison-table td {
+  padding: 8px;
+  text-align: center;
+  border-bottom: 1px solid #f0f0f0;
+  font-weight: 600;
+}
+
+.mod--headtohead .compact-comparison-table td.rider-name {
+  text-align: left;
+  font-weight: 900;
+  color: #0a0e18;
+}
+
+.mod--headtohead .compact-comparison-table td.gold {
+  background: rgba(255, 215, 0, 0.15);
+  color: #d4af37;
+  font-weight: 900;
+}
+
+.mod--headtohead .compact-comparison-table td.silver {
+  background: rgba(192, 192, 192, 0.2);
+  color: #888;
+  font-weight: 900;
+}
+
+.mod--headtohead .compact-comparison-table td.bronze {
+  background: rgba(205, 127, 50, 0.15);
+  color: #cd7f32;
+  font-weight: 900;
+}
+
+/* Key Insights */
+.mod--headtohead .insights-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.mod--headtohead .insight-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(82, 232, 232, 0.08);
+  border-left: 4px solid #52e8e8;
+  border-radius: 6px;
+}
+
+.mod--headtohead .insight-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.mod--headtohead .insight-text {
+  font-size: 13px;
+  color: #0a0e18;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* Summary Footer */
+.mod--headtohead .summary-footer {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 2px solid #90caf9;
+  text-align: center;
+}
+
+.mod--headtohead .footer-note {
+  font-size: 12px;
+  color: #666;
+  font-style: italic;
+  line-height: 1.6;
+}
+
+/* Print: Ensure executive summary stays on one page */
+@media print {
+  .mod--headtohead .executive-summary {
+    page-break-inside: avoid;
+  }
+}

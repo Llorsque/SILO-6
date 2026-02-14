@@ -1964,6 +1964,270 @@ export async function mountHeadToHead(root){
     ]);
   }
 
+  // Create executive summary (final page)
+  function createExecutiveSummary(stats, comparison, filteredData, chosen){
+    return el("div", { class:"executive-summary page-break-before" }, [
+      el("div", { class:"summary-header" }, [
+        el("h2", { class:"summary-title" }, "📋 Executive Summary"),
+        el("div", { class:"summary-subtitle" }, "Overzicht van alle belangrijke informatie in één oogopslag")
+      ]),
+      
+      // Quick Stats Grid
+      el("div", { class:"summary-grid" }, [
+        // Left column - Key metrics
+        el("div", { class:"summary-column" }, [
+          el("div", { class:"summary-box" }, [
+            el("h3", { class:"summary-box-title" }, "🎯 Kerngegevens"),
+            el("div", { class:"summary-items" }, [
+              el("div", { class:"summary-item" }, [
+                el("span", { class:"summary-label" }, "Aantal Rijders:"),
+                el("span", { class:"summary-value" }, String(chosen.length))
+              ]),
+              el("div", { class:"summary-item" }, [
+                el("span", { class:"summary-label" }, "Totaal Races Geanalyseerd:"),
+                el("span", { class:"summary-value" }, String(filteredData.length))
+              ]),
+              el("div", { class:"summary-item" }, [
+                el("span", { class:"summary-label" }, "Dataset:"),
+                el("span", { class:"summary-value" }, meta?.name || "SILO-6")
+              ]),
+              el("div", { class:"summary-item" }, [
+                el("span", { class:"summary-label" }, "Filters:"),
+                el("span", { class:"summary-value small" }, activeFiltersSummary())
+              ])
+            ])
+          ]),
+          
+          // Medals overview
+          el("div", { class:"summary-box" }, [
+            el("h3", { class:"summary-box-title" }, "🏆 Medailles Totaal"),
+            el("div", { class:"medals-overview" }, [
+              el("div", { class:"medal-count gold" }, [
+                el("div", { class:"medal-icon" }, "🥇"),
+                el("div", { class:"medal-number" }, String(stats.reduce((sum, s) => sum + s.golds, 0))),
+                el("div", { class:"medal-label" }, "Goud")
+              ]),
+              el("div", { class:"medal-count silver" }, [
+                el("div", { class:"medal-icon" }, "🥈"),
+                el("div", { class:"medal-number" }, String(stats.reduce((sum, s) => sum + s.silvers, 0))),
+                el("div", { class:"medal-label" }, "Zilver")
+              ]),
+              el("div", { class:"medal-count bronze" }, [
+                el("div", { class:"medal-icon" }, "🥉"),
+                el("div", { class:"medal-number" }, String(stats.reduce((sum, s) => sum + s.bronzes, 0))),
+                el("div", { class:"medal-label" }, "Brons")
+              ])
+            ])
+          ])
+        ]),
+        
+        // Right column - Top performers
+        el("div", { class:"summary-column" }, [
+          el("div", { class:"summary-box" }, [
+            el("h3", { class:"summary-box-title" }, "⭐ Top Presteerders"),
+            el("div", { class:"summary-items" }, [
+              // Most medals
+              (() => {
+                const topMedals = [...stats].sort((a, b) => 
+                  (b.golds + b.silvers + b.bronzes) - (a.golds + a.silvers + a.bronzes)
+                )[0];
+                return el("div", { class:"summary-item highlight" }, [
+                  el("span", { class:"summary-label" }, "Meeste Medailles:"),
+                  el("span", { class:"summary-value" }, 
+                    `${topMedals.name} (${topMedals.golds + topMedals.silvers + topMedals.bronzes})`
+                  )
+                ]);
+              })(),
+              // Most golds
+              (() => {
+                const topGolds = [...stats].sort((a, b) => b.golds - a.golds)[0];
+                return el("div", { class:"summary-item highlight" }, [
+                  el("span", { class:"summary-label" }, "Meeste Goud:"),
+                  el("span", { class:"summary-value" }, `${topGolds.name} (${topGolds.golds})`)
+                ]);
+              })(),
+              // Best average
+              (() => {
+                const bestAvg = [...stats].filter(s => s.avgPos).sort((a, b) => a.avgPos - b.avgPos)[0];
+                return bestAvg ? el("div", { class:"summary-item highlight" }, [
+                  el("span", { class:"summary-label" }, "Beste Gemiddelde:"),
+                  el("span", { class:"summary-value" }, `${bestAvg.name} (${bestAvg.avgPos.toFixed(1)})`)
+                ]) : null;
+              })(),
+              // Most consistent
+              (() => {
+                const mostConsistent = [...stats].filter(s => s.consistency).sort((a, b) => b.consistency - a.consistency)[0];
+                return mostConsistent ? el("div", { class:"summary-item highlight" }, [
+                  el("span", { class:"summary-label" }, "Meest Consistent:"),
+                  el("span", { class:"summary-value" }, `${mostConsistent.name} (${mostConsistent.consistency.toFixed(1)}/10)`)
+                ]) : null;
+              })(),
+              // Highest podium rate
+              (() => {
+                const topPodium = [...stats].sort((a, b) => b.podiumRate - a.podiumRate)[0];
+                return el("div", { class:"summary-item highlight" }, [
+                  el("span", { class:"summary-label" }, "Hoogste Podium %:"),
+                  el("span", { class:"summary-value" }, `${topPodium.name} (${topPodium.podiumRate.toFixed(1)}%)`)
+                ]);
+              })()
+            ].filter(Boolean))
+          ]),
+          
+          // H2H winner if applicable
+          comparison ? el("div", { class:"summary-box" }, [
+            el("h3", { class:"summary-box-title" }, "🆚 Head-to-Head Winnaar"),
+            (() => {
+              const h2hWinner = chosen.reduce((best, rider) => {
+                let wins = 0, losses = 0;
+                chosen.forEach(opponent => {
+                  if(rider === opponent) return;
+                  const key = `${rider}|${opponent}`;
+                  const stat = comparison.h2h.get(key);
+                  if(stat){
+                    wins += stat.wins;
+                    losses += stat.total - stat.wins;
+                  }
+                });
+                const winRate = wins + losses > 0 ? wins / (wins + losses) * 100 : 0;
+                if(!best || winRate > best.winRate){
+                  return { name: rider, wins, losses, winRate };
+                }
+                return best;
+              }, null);
+              
+              return el("div", { class:"h2h-winner" }, [
+                el("div", { class:"winner-name" }, h2hWinner.name),
+                el("div", { class:"winner-stats" }, `${h2hWinner.wins}-${h2hWinner.losses} (${h2hWinner.winRate.toFixed(1)}%)`),
+                el("div", { class:"winner-note" }, "Beste overall W-L record")
+              ]);
+            })()
+          ]) : null
+        ])
+      ]),
+      
+      // Compact rider comparison table
+      el("div", { class:"summary-box full-width" }, [
+        el("h3", { class:"summary-box-title" }, "📊 Snelle Vergelijking"),
+        createCompactComparisonTable(stats)
+      ]),
+      
+      // Key insights
+      el("div", { class:"summary-box full-width" }, [
+        el("h3", { class:"summary-box-title" }, "💡 Belangrijkste Inzichten"),
+        el("div", { class:"insights-grid" }, 
+          generateKeyInsights(stats, comparison).map(insight => 
+            el("div", { class:"insight-item" }, [
+              el("span", { class:"insight-icon" }, insight.icon),
+              el("span", { class:"insight-text" }, insight.text)
+            ])
+          )
+        )
+      ]),
+      
+      // Footer
+      el("div", { class:"summary-footer" }, [
+        el("div", { class:"footer-note" }, 
+          `Dit rapport werd gegenereerd op ${new Date().toLocaleDateString("nl-NL")} op basis van ${filteredData.length} race resultaten. ` +
+          `Voor gedetailleerde analyse en volledige resultaten, zie de voorgaande pagina's.`
+        )
+      ])
+    ]);
+  }
+
+  // Create compact comparison table for summary
+  function createCompactComparisonTable(stats){
+    const table = el("table", { class:"compact-comparison-table" });
+    
+    table.appendChild(el("thead", null, el("tr", null, [
+      el("th", null, "Rijder"),
+      el("th", null, "Races"),
+      el("th", null, "🥇"),
+      el("th", null, "🥈"),
+      el("th", null, "🥉"),
+      el("th", null, "Podium %"),
+      el("th", null, "Ø Positie"),
+      el("th", null, "Consistentie")
+    ])));
+    
+    const tbody = el("tbody");
+    stats.forEach(s => {
+      tbody.appendChild(el("tr", null, [
+        el("td", { class:"rider-name" }, s.name),
+        el("td", null, String(s.totalRaces)),
+        el("td", { class:"gold" }, String(s.golds)),
+        el("td", { class:"silver" }, String(s.silvers)),
+        el("td", { class:"bronze" }, String(s.bronzes)),
+        el("td", null, `${s.podiumRate.toFixed(1)}%`),
+        el("td", null, s.avgPos ? s.avgPos.toFixed(1) : "—"),
+        el("td", null, s.consistency ? `${s.consistency.toFixed(1)}/10` : "—")
+      ]));
+    });
+    table.appendChild(tbody);
+    
+    return table;
+  }
+
+  // Generate key insights automatically
+  function generateKeyInsights(stats, comparison){
+    const insights = [];
+    
+    // Medal leader insight
+    const medalLeader = [...stats].sort((a, b) => 
+      (b.golds + b.silvers + b.bronzes) - (a.golds + a.silvers + a.bronzes)
+    )[0];
+    insights.push({
+      icon: "🏆",
+      text: `${medalLeader.name} leidt met ${medalLeader.golds + medalLeader.silvers + medalLeader.bronzes} medailles totaal`
+    });
+    
+    // Consistency insight
+    const consistent = [...stats].filter(s => s.consistency).sort((a, b) => b.consistency - a.consistency)[0];
+    if(consistent && consistent.consistency > 7){
+      insights.push({
+        icon: "📈",
+        text: `${consistent.name} toont hoogste consistentie (${consistent.consistency.toFixed(1)}/10)`
+      });
+    }
+    
+    // Podium rate insight
+    const topPodium = [...stats].sort((a, b) => b.podiumRate - a.podiumRate)[0];
+    if(topPodium.podiumRate > 50){
+      insights.push({
+        icon: "🎯",
+        text: `${topPodium.name} bereikt ${topPodium.podiumRate.toFixed(0)}% van de races het podium`
+      });
+    }
+    
+    // H2H insight
+    if(comparison){
+      insights.push({
+        icon: "🆚",
+        text: `Head-to-head analyse gebaseerd op ~${Math.round(comparison.sharedRaces)} gedeelde races`
+      });
+    }
+    
+    // Experience insight
+    const mostRaces = [...stats].sort((a, b) => b.totalRaces - a.totalRaces)[0];
+    insights.push({
+      icon: "📊",
+      text: `${mostRaces.name} heeft meeste ervaring met ${mostRaces.totalRaces} races in deze selectie`
+    });
+    
+    // Gold rate insight
+    const topGoldRate = [...stats].map(s => ({
+      name: s.name,
+      rate: s.totalRaces > 0 ? (s.golds / s.totalRaces * 100) : 0
+    })).sort((a, b) => b.rate - a.rate)[0];
+    if(topGoldRate.rate > 10){
+      insights.push({
+        icon: "🥇",
+        text: `${topGoldRate.name} wint goud in ${topGoldRate.rate.toFixed(1)}% van de races`
+      });
+    }
+    
+    return insights;
+  }
+
   function generateAnalyticsReport(reportRoot){
     console.log("=== Analytics Report Generation Started ===");
     clear(reportRoot);
@@ -2212,6 +2476,9 @@ export async function mountHeadToHead(root){
         el("div", { class:"analytics-divider" })
       );
     });
+
+    // Add Executive Summary as final page
+    sections.push(createExecutiveSummary(stats, comparison, filteredData, chosen));
 
     const reportContent = el("div", { class:"analytics-report-content", id:"analytics-report-content" }, sections);
 
